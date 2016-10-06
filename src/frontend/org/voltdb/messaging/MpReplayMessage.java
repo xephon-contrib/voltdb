@@ -26,8 +26,8 @@ import org.voltcore.messaging.VoltMessage;
 import org.voltcore.network.NIOReadStream;
 import org.voltcore.network.VoltProtocolHandler;
 import org.voltcore.utils.HBBPool.SharedBBContainer;
+import org.voltdb.SPIfromSerialization;
 import org.voltdb.SPIfromSerializedBuffer;
-import org.voltdb.StoredProcedureInvocation;
 
 import com.google_voltpatches.common.collect.ImmutableSet;
 import com.google_voltpatches.common.collect.Sets;
@@ -41,7 +41,7 @@ public class MpReplayMessage extends VoltMessage {
     long m_uniqueId;
     int m_partitionId;
     Set<Integer> m_involvedPartitions;
-    StoredProcedureInvocation m_invocation;
+    SPIfromSerialization m_invocation;
 
     /** Empty constructor for de-serialization */
     MpReplayMessage() {
@@ -49,7 +49,7 @@ public class MpReplayMessage extends VoltMessage {
     }
 
     public MpReplayMessage(long txnId, long uniqueId, int partitionId, Collection<Integer> involvedPartitions,
-                           StoredProcedureInvocation invocation) {
+                           SPIfromSerialization invocation) {
         super();
 
         m_txnId = txnId;
@@ -75,7 +75,7 @@ public class MpReplayMessage extends VoltMessage {
         return m_involvedPartitions;
     }
 
-    public StoredProcedureInvocation getInvocation() {
+    public SPIfromSerialization getInvocation() {
         return m_invocation;
     }
 

@@ -1124,7 +1124,7 @@ public final class InvocationDispatcher {
                         }
                         else {
                             // create the execution site task
-                            SPIfromParameterArray task = getUpdateCatalogExecutionTask(changeResult);
+                            SPIfromSerialization task = getUpdateCatalogExecutionTask(changeResult);
 
                             ClientResponseImpl error = null;
                             if ((error = m_permissionValidator.shouldAccept(task.getProcName(), result.user, task,
@@ -1132,22 +1132,12 @@ public final class InvocationDispatcher {
                                 writeResponseToConnection(error);
                             }
                             else {
-                                /*
-                                 * Round trip the invocation to initialize it for command logging
-                                 */
-                                SPIfromSerialization serializedSPI = null;
-                                try {
-                                    serializedSPI = task.roundTripForCL();
-                                } catch (Exception e) {
-                                    hostLog.fatal(e);
-                                    VoltDB.crashLocalVoltDB(e.getMessage(), true, e);
-                                }
                                 // initiate the transaction. These hard-coded values from catalog
                                 // procedure are horrible, horrible, horrible.
                                 createTransaction(changeResult.connectionId,
-                                        serializedSPI, false, false, false, 0, task.getSerializedSize(),
+                                        task, false, false, false, 0, task.getSerializedSize(),
                                         System.nanoTime());
-                                serializedSPI.discard();
+                                task.discard();
                             }
                         }
                     }
@@ -1253,7 +1243,7 @@ public final class InvocationDispatcher {
         c.writeStream().enqueue(buf);
     }
 
-    public static final SPIfromParameterArray getUpdateCatalogExecutionTask(CatalogChangeResult changeResult) {
+    public static final SPIfromSerialization getUpdateCatalogExecutionTask(CatalogChangeResult changeResult) {
         // create the execution site task
         SPIfromParameterArray task = new SPIfromParameterArray();
            task.setProcName("@UpdateApplicationCatalog");
@@ -1270,7 +1260,16 @@ public final class InvocationDispatcher {
            task.clientHandle = changeResult.clientHandle;
            // DR stuff
            task.type = changeResult.invocationType;
-           return task;
+           /*
+            * Round trip the invocation to initialize it for command logging
+            */
+           SPIfromSerialization serializedSPI = null;
+           try {
+               serializedSPI = task.roundTripForCL();
+           } catch (Exception e) {
+               VoltDB.crashLocalVoltDB(e.getMessage(), true, e);
+           }
+           return serializedSPI;
        }
 
 
