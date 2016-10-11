@@ -1639,11 +1639,13 @@ public class SnapshotDaemon implements SnapshotCompletionInterest {
      * one to try and complete the work. C'est la vie.
      */
     public void requestUserSnapshot(final StoredProcedureInvocation invocation, final Connection c) {
+        invocation.implicitReference();
         m_es.submit(new Runnable() {
             @Override
             public void run() {
                 try {
                     submitUserSnapshotRequest(invocation, c);
+                    invocation.discard();
                 } catch (Exception e) {
                     VoltDB.crashLocalVoltDB("Exception submitting user snapshot request", true, e);
                 }

@@ -1888,7 +1888,7 @@ public class ClientInterface implements SnapshotDaemon.DaemonInitiator {
                 proc.getReadonly(), proc.getSinglepartition(), proc.getEverysite(),
                 0 /* Can provide anything for multi-part */,
                 spi.getSerializedSize(), System.nanoTime());
-
+        serializedSPI.discard();
         return syncCb.getResponse(timeoutMS);
     }
 
@@ -1914,7 +1914,7 @@ public class ClientInterface implements SnapshotDaemon.DaemonInitiator {
                 proc.getReadonly(), proc.getSinglepartition(), proc.getEverysite(),
                 0 /* Can provide anything for multi-part */,
                 spi.getSerializedSize(), System.nanoTime());
-
+        serializedSPI.discard();
     }
 
     /**
