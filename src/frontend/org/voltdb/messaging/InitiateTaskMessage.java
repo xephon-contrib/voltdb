@@ -214,6 +214,7 @@ public class InitiateTaskMessage extends TransactionInfoBaseMessage {
 
         SPIfromSerializedContainer serializedSPI = new SPIfromSerializedContainer();
         serializedSPI.initFromContainer(container);
+        container.discard();
         m_invocation = serializedSPI;
     }
 

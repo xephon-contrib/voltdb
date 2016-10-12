@@ -28,7 +28,7 @@ import org.voltcore.utils.CoreUtils;
 import org.voltcore.utils.HBBPool.SharedBBContainer;
 import org.voltcore.utils.Pair;
 import org.voltdb.ClientResponseImpl;
-import org.voltdb.SPIfromSerializedBuffer;
+import org.voltdb.SPIfromSerializedContainer;
 import org.voltdb.StoredProcedureInvocation;
 import org.voltdb.VoltTable;
 import org.voltdb.client.ClientResponse;
@@ -230,9 +230,8 @@ public class InitiateResponseMessage extends VoltMessage {
     }
 
     @Override
-    protected void initFromContainer(SharedBBContainer container) {}
-
-    protected void initFromBuffer(ByteBuffer buf) throws IOException {
+    protected void initFromContainer(SharedBBContainer container) throws IOException {
+        ByteBuffer buf = container.b();
         m_txnId = buf.getLong();
         m_spHandle = buf.getLong();
         m_initiatorHSId = buf.getLong();
@@ -251,23 +250,28 @@ public class InitiateResponseMessage extends VoltMessage {
             buf.get(hashinatorBytes);
             m_currentHashinatorConfig = Pair.of(hashinatorVersion, hashinatorBytes);
             // SPI must be the last to deserialize, it will take the remaining as parameter bytes
-            SPIfromSerializedBuffer serializedSPI = new SPIfromSerializedBuffer();
-            serializedSPI.initFromByteBuffer(buf);
+            SPIfromSerializedContainer serializedSPI = new SPIfromSerializedContainer();
+            serializedSPI.initFromContainer(container);
             m_invocation = serializedSPI;
             m_commit = false;
         }
+        container.discard();
     }
 
     @Override
     public void initFromInputHandler(VoltProtocolHandler handler, NIOReadStream inputStream) throws IOException {
-        initFromBuffer(handler.getNextBBMessage(inputStream));
+        initFromContainer(handler.getNextHBBMessage(inputStream));
     }
 
     @Override
     public void implicitReference() {}
 
     @Override
-    public void discard() {}
+    public void discard() {
+        if (m_mispartitioned) {
+            m_invocation.discard();
+        }
+    }
 
     @Override
     public String toString() {

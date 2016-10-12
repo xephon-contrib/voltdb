@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.cliffc_voltpatches.high_scale_lib.NonBlockingHashMap;
+import org.voltcore.logging.Level;
 import org.voltcore.logging.VoltLogger;
 /**
  * A pool of {@link java.nio.ByteBuffer ByteBuffers} that are
@@ -35,16 +36,25 @@ public final class HBBPool {
     private static final VoltLogger TRACE = new VoltLogger("HBBPOOL");
     private static final VoltLogger HOST = new VoltLogger("HBBPOOL");
 
-//    static {
-//        TRACE.setLevel(Level.TRACE);
-//    }
+    static {
+        TRACE.setLevel(Level.TRACE);
+    }
 
     /**
      * Number of bytes allocated globally by DBBPools
      */
     private static AtomicLong bytesAllocatedGlobally = new AtomicLong(0);
-    static long getBytesAllocatedGlobally()
-    {
+    public static boolean debugAllBuffersReturned() {
+        long returnedBufferBytes = 0;
+        for (Entry<Integer, ConcurrentLinkedQueue<BufferWrapper>> poolEntry : m_pooledBuffers.entrySet()) {
+            ConcurrentLinkedQueue<BufferWrapper> pool = poolEntry.getValue();
+            int capacity = poolEntry.getKey();
+            int entryCount = pool.size();
+            returnedBufferBytes += capacity*entryCount;
+        }
+        return bytesAllocatedGlobally.get() == returnedBufferBytes;
+    }
+    static long getBytesAllocatedGlobally() {
         return bytesAllocatedGlobally.get();
     }
     private static final NonBlockingHashMap<Integer, ConcurrentLinkedQueue<BufferWrapper>> m_pooledBuffers =
@@ -135,10 +145,6 @@ public final class HBBPool {
             TRACE.trace(message);
         }
     }
-    /*
-     * The only reason to not retrieve the address is that network code shared
-     * with the java client shouldn't have a dependency on the native library
-     */
     private static SharedBBContainer allocateHeap(final int capacity, final boolean logging) {
         SharedBBContainer retval = null;
         try {

@@ -1137,8 +1137,8 @@ public final class InvocationDispatcher {
                                 createTransaction(changeResult.connectionId,
                                         task, false, false, false, 0, task.getSerializedSize(),
                                         System.nanoTime());
-                                task.discard();
                             }
+                            task.discard();
                         }
                     }
                     else {
