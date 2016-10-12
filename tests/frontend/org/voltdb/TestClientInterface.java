@@ -52,6 +52,7 @@ import java.util.HashSet;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.ScheduledExecutorService;
@@ -143,6 +144,7 @@ public class TestClientInterface {
     BlockingQueue<ByteBuffer> responses = new LinkedTransferQueue<>();
     BlockingQueue<DeferredSerialization> responsesDS = new LinkedTransferQueue<>();
     private static final ScheduledExecutorService ses = Executors.newScheduledThreadPool(1);
+    private ConcurrentLinkedQueue<VoltMessage> sentMessages = new ConcurrentLinkedQueue<VoltMessage>();
 
     @Before
     public void setUp() throws Exception {
@@ -198,6 +200,15 @@ public class TestClientInterface {
             @Override
             public Object answer(InvocationOnMock invocation)
             {
+                Object[] args = invocation.getArguments();
+                sentMessages.add((VoltMessage)args[1]);
+                return null;
+            }
+        }).when(m_messenger).send(anyLong(), (VoltMessage)anyObject());
+        doAnswer(new Answer<Object>() {
+            @Override
+            public Object answer(InvocationOnMock invocation)
+            {
                 Object args[] = invocation.getArguments();
                 return ses.scheduleAtFixedRate((Runnable) args[0], (long) args[1], (long) args[2], (TimeUnit) args[3]);
             }
@@ -247,7 +258,11 @@ public class TestClientInterface {
         reset(m_handler);
         m_periodicWorkThread.shutdown();
         m_periodicWorkThread.awaitTermination(356, TimeUnit.DAYS);
-
+        VoltMessage msg;
+        while ((msg = sentMessages.poll()) != null) {
+            msg.discard();
+        }
+        assertTrue(HBBPool.debugAllBuffersReturned());
     }
 
     /**
@@ -265,8 +280,7 @@ public class TestClientInterface {
         proc.setParams(params);
         SharedBBContainer rslt = HBBPool.allocateHeapAndPool(proc.getSerializedSize());
         proc.flattenToBuffer(rslt.b());
-        // The discard of the invocation will deallocate (return) the heap buffer
-        rslt.discard();
+        rslt.b().flip();
         return rslt;
     }
 
@@ -323,6 +337,7 @@ public class TestClientInterface {
         SharedBBContainer msg = createMsg("@Explain", "select * from a");
         ClientResponseImpl resp = m_ci.handleRead(msg, m_handler, m_cxn);
         assertNull(resp);
+        msg.discard();
         ArgumentCaptor<LocalObjectMessage> captor = ArgumentCaptor.forClass(LocalObjectMessage.class);
         verify(m_messenger).send(eq(32L), captor.capture());
         assertTrue(captor.getValue().payload instanceof AdHocPlannerWork );
@@ -341,6 +356,7 @@ public class TestClientInterface {
         assertTrue(captor.getValue().payload instanceof AdHocPlannerWork);
         String payloadString = captor.getValue().payload.toString();
         assertTrue(payloadString.contains("user partitioning: none"));
+        msg.discard();
 
         // single-part adhoc
         reset(m_messenger);
@@ -352,6 +368,7 @@ public class TestClientInterface {
         payloadString = captor.getValue().payload.toString();
         assertTrue(payloadString.contains("user params: empty"));
         assertTrue(payloadString.contains("user partitioning: 3"));
+        msg.discard();
     }
 
     @Test
@@ -445,6 +462,7 @@ public class TestClientInterface {
             verify(m_messenger).send(eq(32L), // A fixed number set in setUpOnce()
                                      captor.capture());
             assertTrue(captor.getValue().payload instanceof CatalogChangeWork);
+            msg.discard();
         }
     }
 
@@ -455,6 +473,7 @@ public class TestClientInterface {
         // expect an error response from handleRead.
         assertNotNull(resp);
         assertTrue(resp.getStatus() != 0);
+        msg.discard();
     }
 
 
@@ -506,6 +525,7 @@ public class TestClientInterface {
         StoredProcedureInvocation invocation =
                 readAndCheck(msg, "hello", 1, true, true).getStoredProcedureInvocation();
         assertEquals(1, invocation.getParameterAtIndex(0));
+        msg.discard();
     }
 
     @Test
@@ -523,6 +543,7 @@ public class TestClientInterface {
         assertTrue(vt.advanceRow());
         //System.gc() should take at least a little time
         assertTrue(resp.getResults()[0].getLong(0) > 10000);
+        msg.discard();
     }
 
     @Test
@@ -532,6 +553,7 @@ public class TestClientInterface {
         assertNull(resp);
         verify(m_sysinfoAgent).performOpsAction(any(Connection.class), anyInt(), eq(OpsSelector.SYSTEMINFORMATION),
                 any(ParameterSet.class));
+        msg.discard();
     }
 
     /**
@@ -544,6 +566,7 @@ public class TestClientInterface {
         ClientResponseImpl resp = m_ci.handleRead(msg, m_handler, m_cxn);
         assertNull(resp);
         assertEquals(drStatsInvoked, 1);
+        msg.discard();
     }
 
     @Test
@@ -556,6 +579,7 @@ public class TestClientInterface {
         StoredProcedureInvocation invocation =
                 readAndCheck(msg, "@LoadSinglepartitionTable", partitionParam, false, true).getStoredProcedureInvocation();
         assertEquals((byte) 0, invocation.getParameterAtIndex(2));
+        msg.discard();
     }
 
     @Test
@@ -568,6 +592,7 @@ public class TestClientInterface {
         StoredProcedureInvocation invocation =
                 readAndCheck(msg, "@LoadSinglepartitionTable", partitionParam, false, true).getStoredProcedureInvocation();
         assertEquals((byte) 1, invocation.getParameterAtIndex(2));
+        msg.discard();
     }
 
     @Test
@@ -590,6 +615,7 @@ public class TestClientInterface {
         SharedBBContainer msg = createMsg("hello", 1);
         ClientResponseImpl resp = m_ci.handleRead(msg, m_handler, m_cxn);
         assertNull(resp);
+        msg.discard();
 
         // writes are not allowed
         msg = createMsg("hellorw", "10");
@@ -603,6 +629,7 @@ public class TestClientInterface {
         }
 
         when(m_volt.getMode()).thenReturn(OperationMode.RUNNING);
+        msg.discard();
     }
 
     @Test
@@ -632,6 +659,7 @@ public class TestClientInterface {
         plannedStmt.clientData = m_cxn;
         m_ci.getDispatcher().processFinishedCompilerWork(plannedStmt).run();
         assertEquals(0, responses.size());
+        msg.discard();
 
         query = "insert into A values (10)";
         msg = createMsg("@AdHoc", query);
@@ -653,6 +681,7 @@ public class TestClientInterface {
         }
 
         when(m_volt.getMode()).thenReturn(OperationMode.RUNNING);
+        msg.discard();
     }
 
     @Test
@@ -661,6 +690,8 @@ public class TestClientInterface {
         ClientResponseImpl resp = m_ci.handleRead(msg, m_handler, m_cxn);
         assertNotNull(resp);
         assertEquals(ClientResponse.UNEXPECTED_FAILURE, resp.getStatus());
+        // Message not sent so discard here
+        msg.discard();
     }
 
     @Test
@@ -669,11 +700,15 @@ public class TestClientInterface {
         ClientResponseImpl resp = m_ci.handleRead(msg, m_handler, m_cxn);
         assertNotNull(resp);
         assertEquals(ClientResponse.UNEXPECTED_FAILURE, resp.getStatus());
+        // Message not sent so discard here
+        msg.discard();
 
         msg = createMsg("@Resume");
         resp = m_ci.handleRead(msg, m_handler, m_cxn);
         assertNotNull(resp);
         assertEquals(ClientResponse.UNEXPECTED_FAILURE, resp.getStatus());
+        // Message not sent so discard here
+        msg.discard();
     }
 
     @Test
@@ -683,6 +718,8 @@ public class TestClientInterface {
         ClientResponseImpl resp = m_ci.handleRead(msg, m_handler, m_cxn);
         assertNotNull(resp);
         assertEquals(ClientResponse.GRACEFUL_FAILURE, resp.getStatus());
+        // Message not sent so discard here
+        msg.discard();
     }
 
     @Test
@@ -692,6 +729,8 @@ public class TestClientInterface {
         // Verify that the truncation request node was not created.
         verify(m_zk, never()).create(eq(VoltZK.request_truncation_snapshot_node), any(byte[].class),
                                      eq(Ids.OPEN_ACL_UNSAFE), eq(CreateMode.PERSISTENT));
+        // Message not sent so discard here
+        msg.discard();
     }
 
     @Test
@@ -705,6 +744,8 @@ public class TestClientInterface {
             // Verify that the truncation request node was created.
             verify(m_zk, never()).create(eq(VoltZK.request_truncation_snapshot_node), any(byte[].class),
                                 eq(Ids.OPEN_ACL_UNSAFE), eq(CreateMode.PERSISTENT_SEQUENTIAL));
+            // Message not sent so discard here
+            msg.discard();
         }
         finally {
             logConfig.setEnabled(wasEnabled);
@@ -755,6 +796,7 @@ public class TestClientInterface {
         if (shouldRestart) {
             assertEquals(-1, resp.getSerializedSize());
             checkInitMsgSent("hello", 1, true, true);
+            respMsg.discard();
         } else {
             assertTrue(-1 != resp.getSerializedSize());
             verify(m_messenger, never()).send(anyLong(), any(VoltMessage.class));
@@ -762,6 +804,7 @@ public class TestClientInterface {
 
         // the hashinator should've been updated in either case
         assertEquals(newHashinatorVersion, TheHashinator.getCurrentVersionedConfig().getFirst().longValue());
+        msg.discard();
     }
 
     @Test
@@ -771,36 +814,42 @@ public class TestClientInterface {
         ClientResponseImpl resp = m_ci.handleRead(msg, m_handler, m_cxn);
         assertNotNull(resp);
         assertEquals(ClientResponse.GRACEFUL_FAILURE, resp.getStatus());
+        msg.discard();
 
         //Null param
         msg = createMsg("@GetPartitionKeys", new Object[] { null });
         resp = m_ci.handleRead(msg, m_handler, m_cxn);
         assertNotNull(resp);
         assertEquals(ClientResponse.GRACEFUL_FAILURE, resp.getStatus());
+        msg.discard();
 
         //Empty string param
         msg = createMsg("@GetPartitionKeys", "");
         resp = m_ci.handleRead(msg, m_handler, m_cxn);
         assertNotNull(resp);
         assertEquals(ClientResponse.GRACEFUL_FAILURE, resp.getStatus());
+        msg.discard();
 
         //Junk string
         msg = createMsg("@GetPartitionKeys", "ryanlikestheyankees");
         resp = m_ci.handleRead(msg, m_handler, m_cxn);
         assertNotNull(resp);
         assertEquals(ClientResponse.GRACEFUL_FAILURE, resp.getStatus());
+        msg.discard();
 
         //No param
         msg = createMsg("@GetPartitionKeys");
         resp = m_ci.handleRead(msg, m_handler, m_cxn);
         assertNotNull(resp);
         assertEquals(ClientResponse.GRACEFUL_FAILURE, resp.getStatus());
+        msg.discard();
 
         //Extra param
         msg = createMsg("@GetPartitionKeys", "INTEGER", 99);
         resp = m_ci.handleRead(msg, m_handler, m_cxn);
         assertNotNull(resp);
         assertEquals(ClientResponse.GRACEFUL_FAILURE, resp.getStatus());
+        msg.discard();
 
         //Correct param with no case sensitivity
         msg = createMsg("@GetPartitionKeys", "InTeGeR");
@@ -810,6 +859,7 @@ public class TestClientInterface {
         VoltTable vt = resp.getResults()[0];
         assertEquals(3, vt.getRowCount());
         assertEquals(VoltType.INTEGER, vt.getColumnType(1));
+        msg.discard();
 
         Set<Integer> partitions = new HashSet<>(Arrays.asList( 0, 1, 2));
         while (vt.advanceRow()) {
@@ -846,6 +896,7 @@ public class TestClientInterface {
             ByteBuffer actualBuf = ByteBuffer.allocate(ds.getSerializedSize());
             ds.serialize(actualBuf);
             assertEquals(expectedBuf, actualBuf);
+            msg.discard();
         } finally {
             RateLimitedClientNotifier.WARMUP_MS = 1000;
             ClientInterface.TOPOLOGY_CHANGE_CHECK_MS = 5000;

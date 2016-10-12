@@ -28,6 +28,7 @@ import java.nio.ByteBuffer;
 
 import junit.framework.TestCase;
 
+import org.junit.After;
 import org.voltcore.messaging.HeartbeatMessage;
 import org.voltcore.messaging.HeartbeatResponseMessage;
 import org.voltcore.messaging.VoltMessage;
@@ -46,6 +47,11 @@ import com.google_voltpatches.common.collect.Sets;
 
 public class TestVoltMessageSerialization extends TestCase {
 
+    @After
+    public void tearDown() throws Exception {
+        assertTrue(HBBPool.debugAllBuffersReturned());
+    }
+
     VoltMessage checkVoltMessage(VoltMessage msg) throws IOException {
         SharedBBContainer container1 = HBBPool.allocateHeapAndPool(msg.getSerializedSize());
         msg.flattenToBuffer(container1.b());
@@ -54,6 +60,7 @@ public class TestVoltMessageSerialization extends TestCase {
         VoltDbMessageFactory vdbmf = new VoltDbMessageFactory();
 
         VoltMessage msg2 = vdbmf.createMessageFromContainer(container1, -1);
+        // reference is now in msg2 (containing the slice)
         SharedBBContainer container2 = HBBPool.allocateHeapAndPool(msg2.getSerializedSize());
         msg2.flattenToBuffer(container2.b());
         container1.b().rewind();
@@ -61,6 +68,8 @@ public class TestVoltMessageSerialization extends TestCase {
 
         assertEquals(container1.b().remaining(), container2.b().remaining());
         assertTrue(container1.b().compareTo(container2.b()) == 0);
+        container1.discard();
+        container2.discard();
 
         return msg2;
     }
@@ -81,6 +90,7 @@ public class TestVoltMessageSerialization extends TestCase {
         assertEquals(itask.getStoredProcedureName(), itask2.getStoredProcedureName());
         assertEquals(itask.getParameterCount(), itask2.getParameterCount());
         assertEquals(itask.getLastSafeTxnId(), itask2.getLastSafeTxnId());
+        itask2.discard();
     }
 
     public void testIv2InitiateTask() throws IOException {
@@ -108,6 +118,7 @@ public class TestVoltMessageSerialization extends TestCase {
         assertEquals(itask.getSpHandle(), itask2.getSpHandle());
         assertEquals(31337, itask.getSpHandle());
         assertTrue(itask.isForReplay());
+        itask2.discard();
     }
 
     public void testInitiateResponse() throws IOException {
@@ -131,6 +142,7 @@ public class TestVoltMessageSerialization extends TestCase {
         InitiateResponseMessage iresponse2 = (InitiateResponseMessage) checkVoltMessage(iresponse);
 
         assertEquals(iresponse.getTxnId(), iresponse2.getTxnId());
+        iresponse2.discard();
     }
 
     public void testInitiateResponseForIv2() throws IOException {

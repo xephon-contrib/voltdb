@@ -67,8 +67,6 @@ public class SPIfromParameterArray extends StoredProcedureInvocation {
      */
     @Override
     public SPIfromSerialization roundTripForCL() throws IOException {
-        // Ensure that the paramset has been built so we know the serializedSize
-        getParams();
         SharedBBContainer bbContainer = HBBPool.allocateHeapAndPool(getSerializedSize());
         flattenToBuffer(bbContainer.b());
         bbContainer.b().flip();

@@ -125,7 +125,9 @@ public abstract class StoredProcedureInvocation {
         // get batch extension size
         // 6 is one byte for ext type, one for size, and 4 for integer value
         int batchExtensionSize = batchTimeout != BatchTimeoutOverrideType.NO_TIMEOUT ? 6 : 0;
-
+        if (serializedParamSize == null) {
+            getParams();
+        }
         // compute the size
         int size =
             1 + // type

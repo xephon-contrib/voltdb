@@ -128,60 +128,61 @@ public class TestProcedureInvocation extends TestCase{
     public void verifySpi(StoredProcedureInvocation spi) throws Exception {
         assertEquals(10, spi.getClientHandle());
         assertEquals(spi.getProcName(), "invocation1");
-        assertEquals(spi.getParams().toArray()[0], byteparam);
-        assertEquals(spi.getParams().toArray()[1], shortparam);
-        assertEquals(spi.getParams().toArray()[2], intparam);
-        assertEquals(spi.getParams().toArray()[3], longparam);
-        assertEquals(spi.getParams().toArray()[4], doubleparam);
-        assertEquals(spi.getParams().toArray()[5], stringparam);
-        assertEquals(spi.getParams().toArray()[6], dateparam);
-        assertEquals(spi.getParams().toArray()[7], bigdecimalparam);
-        assertEquals(spi.getParams().toArray()[8], volttableparam);
+        Object[] params = spi.getParams().toArray();
+        assertEquals(params[0], byteparam);
+        assertEquals(params[1], shortparam);
+        assertEquals(params[2], intparam);
+        assertEquals(params[3], longparam);
+        assertEquals(params[4], doubleparam);
+        assertEquals(params[5], stringparam);
+        assertEquals(params[6], dateparam);
+        assertEquals(params[7], bigdecimalparam);
+        assertEquals(params[8], volttableparam);
 
         // this case is weird - byte arrays are converted to strings for the EE.
         // that conversion happens in the ParameterSet serialization and is evident
         // here.
-        byte stringBytes[] = (byte[]) spi.getParams().toArray()[9];
+        byte stringBytes[] = (byte[]) params[9];
         String bytestring = new String(stringBytes, "UTF-8");
         assertEquals(bytestring, "foo");
 
-        short[] spishortarray = (short[]) spi.getParams().toArray()[10];
+        short[] spishortarray = (short[]) params[10];
         assertEquals(spishortarray.length, 3);
         assertEquals(spishortarray.length, shortarray.length);
         for (int i=0; i < spishortarray.length; ++i)
             assertEquals(spishortarray[i], shortarray[i]);
 
-        int[] spiintarray = (int[]) spi.getParams().toArray()[11];
+        int[] spiintarray = (int[]) params[11];
         assertEquals(3, spiintarray.length);
         assertEquals(intarray.length, spiintarray.length);
         for (int i=0; i < intarray.length; ++i)
             assertEquals(intarray[i], spiintarray[i]);
 
-        double[] spidoublearray = (double[]) spi.getParams().toArray()[12];
+        double[] spidoublearray = (double[]) params[12];
         assertEquals(3, spidoublearray.length);
         assertEquals(spidoublearray.length, doublearray.length);
         for (int i=0; i < spidoublearray.length; ++i)
             assertEquals(spidoublearray[i], doublearray[i]);
 
-        String[] spistrarray = (String[]) spi.getParams().toArray()[13];
+        String[] spistrarray = (String[]) params[13];
         assertEquals(3, spistrarray.length);
         assertEquals(spistrarray.length, stringarray.length);
         for (int i=0; i < spistrarray.length; ++i)
             assertEquals(spistrarray[i], stringarray[i]);
 
-        TimestampType[] spidatearray = (TimestampType[]) spi.getParams().toArray()[14];
+        TimestampType[] spidatearray = (TimestampType[]) params[14];
         assertEquals(3, spidatearray.length);
         assertEquals(spidatearray.length, datearray.length);
         for (int i=0; i < 3; i++)
             assertEquals(spidatearray[i], datearray[i]);
 
-        BigDecimal[] spibdarray = (BigDecimal[]) spi.getParams().toArray()[15];
+        BigDecimal[] spibdarray = (BigDecimal[]) params[15];
         assertEquals(3, spibdarray.length);
         assertEquals(3, bigdecimalarray.length);
         for (int i=0; i < 3; i++)
             assertEquals(spibdarray[i], bigdecimalarray[i]);
 
-        VoltTable[] spivtarray = (VoltTable[]) spi.getParams().toArray()[16];
+        VoltTable[] spivtarray = (VoltTable[]) params[16];
         assertEquals(3, spivtarray.length);
         assertEquals(3, volttablearray.length);
         for (int i=0; i < 3; i++)
