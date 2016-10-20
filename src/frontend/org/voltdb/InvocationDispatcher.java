@@ -1504,7 +1504,8 @@ public final class InvocationDispatcher {
         long handle = cihm.getHandle(isSinglePartition, partition, invocation.getClientHandle(),
                 messageSize, nowNanos, invocation.getProcName(), initiatorHSId, isReadOnly, isShortCircuitRead);
 
-        invocation.implicitReference(); // Discarded from SetDone() or DeferredSerialization in Send()
+        // Discarded from SetDone() or DeferredSerialization in Send() if routed SP txn
+        invocation.implicitReference();
         Iv2InitiateTaskMessage workRequest =
             new Iv2InitiateTaskMessage(m_siteId,
                     initiatorHSId,

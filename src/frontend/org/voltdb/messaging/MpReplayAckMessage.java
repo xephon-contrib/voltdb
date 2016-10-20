@@ -57,6 +57,11 @@ public class MpReplayAckMessage extends VoltMessage {
     }
 
     @Override
+    protected void initFromBuffer(ByteBuffer buf) throws IOException {
+        assert(false);
+    }
+
+    @Override
     protected void initFromContainer(SharedBBContainer container) throws IOException {
         ByteBuffer buf = container.b();
         m_txnId = buf.getLong();

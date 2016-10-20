@@ -98,6 +98,12 @@ public class BorrowTaskMessage extends TransactionInfoBaseMessage
     }
 
     @Override
+    protected void initFromBuffer(ByteBuffer buf) throws IOException {
+        throw new RuntimeException("Preparing to serialize BorrowTaskMessage, " +
+                                   "which should never happen");
+    }
+
+    @Override
     public void initFromContainer(SharedBBContainer container) throws IOException {
         throw new RuntimeException("Preparing to deserialize BorrowTaskMessage, " +
                                    "which should never happen");

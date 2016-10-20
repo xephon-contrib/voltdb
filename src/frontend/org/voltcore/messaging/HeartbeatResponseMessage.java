@@ -75,6 +75,11 @@ public class HeartbeatResponseMessage extends VoltMessage {
     }
 
     @Override
+    protected void initFromBuffer(ByteBuffer buf) throws IOException {
+        assert(false);
+    }
+
+    @Override
     protected void initFromContainer(SharedBBContainer container) {
         ByteBuffer buf = container.b();
         m_execHSId = buf.getLong();

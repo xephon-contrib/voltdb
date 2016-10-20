@@ -17,6 +17,7 @@
 
 package org.voltcore.messaging;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.voltcore.utils.CoreUtils;
@@ -53,7 +54,12 @@ public class SiteFailureForwardMessage extends SiteFailureMessage {
     }
 
     @Override
-    public void initFromContainer(SharedBBContainer container) {
+    protected void initFromBuffer(ByteBuffer buf) throws IOException {
+        assert(false);
+    }
+
+    @Override
+    public void initFromContainer(SharedBBContainer container) throws IOException {
         super.initFromContainer(container);
         m_reportingHSId = container.b().getLong();
         assert(container.b().limit() == container.b().position());

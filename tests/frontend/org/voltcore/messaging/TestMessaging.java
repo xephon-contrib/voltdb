@@ -59,7 +59,14 @@ public class TestMessaging extends TestCase {
         }
 
         @Override
-        protected void initFromContainer(SharedBBContainer container) {
+        protected void initFromBuffer(ByteBuffer buf) throws IOException {
+            m_length = buf.limit() - buf.position();
+            m_localValue = new byte[m_length];
+            buf.get(m_localValue);
+        }
+
+        @Override
+        protected void initFromContainer(SharedBBContainer container) throws IOException {
             ByteBuffer buf = container.b();
             m_length = buf.limit() - buf.position();
             m_localValue = new byte[m_length];

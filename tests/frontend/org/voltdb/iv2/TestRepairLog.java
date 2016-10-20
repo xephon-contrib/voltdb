@@ -95,7 +95,11 @@ public class TestRepairLog
     private static class FooMessage extends VoltMessage
     {
         @Override
-        protected void initFromContainer(SharedBBContainer container) {
+        protected void initFromBuffer(ByteBuffer buf) throws IOException {
+        }
+
+        @Override
+        protected void initFromContainer(SharedBBContainer container) throws IOException {
         }
 
         @Override

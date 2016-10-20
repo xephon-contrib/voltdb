@@ -60,6 +60,11 @@ public class Iv2EndOfLogMessage extends TransactionInfoBaseMessage
     }
 
     @Override
+    protected void initFromBuffer(ByteBuffer buf) throws IOException {
+        assert(false);
+    }
+
+    @Override
     public void initFromContainer(SharedBBContainer container) throws IOException
     {
         super.initFromContainer(container);

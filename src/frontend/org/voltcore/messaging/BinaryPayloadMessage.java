@@ -38,9 +38,7 @@ public class BinaryPayloadMessage extends VoltMessage {
     }
 
     @Override
-    public void initFromContainer(SharedBBContainer container) {}
-
-    private void initFromBuffer(ByteBuffer buf) {
+    protected void initFromBuffer(ByteBuffer buf) throws IOException {
         m_metadata = new byte[buf.getShort()];
         buf.get(m_metadata);
         final int payloadLength = buf.getInt();
@@ -49,6 +47,11 @@ public class BinaryPayloadMessage extends VoltMessage {
             buf.get(m_payload);
         }
         assert(buf.limit() == buf.position());
+    }
+
+    @Override
+    public void initFromContainer(SharedBBContainer container) {
+        assert(false);
     }
 
     @Override

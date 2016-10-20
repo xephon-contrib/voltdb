@@ -39,8 +39,7 @@ public class CompleteTransactionMessage extends TransactionInfoBaseMessage
     static final int REQUIRESACK = 1;
     static final int ISRESTART = 2;
 
-    private void setBit(int position, boolean value)
-    {
+    private void setBit(int position, boolean value) {
         if (value) {
             m_flags |= (1 << position);
         }
@@ -49,8 +48,7 @@ public class CompleteTransactionMessage extends TransactionInfoBaseMessage
         }
     }
 
-    private boolean getBit(int position)
-    {
+    private boolean getBit(int position) {
         return (((m_flags >> position) & 0x1) == 1);
     }
 
@@ -74,8 +72,7 @@ public class CompleteTransactionMessage extends TransactionInfoBaseMessage
     public CompleteTransactionMessage(long initiatorHSId, long coordinatorHSId,
                                       long txnId, boolean isReadOnly, int hash,
                                       boolean isRollback, boolean requiresAck,
-                                      boolean isRestart, boolean isForReplay)
-    {
+                                      boolean isRestart, boolean isForReplay) {
         super(initiatorHSId, coordinatorHSId, txnId, 0, isReadOnly, isForReplay);
         m_hash = hash;
         setBit(ISROLLBACK, isRollback);
@@ -83,8 +80,7 @@ public class CompleteTransactionMessage extends TransactionInfoBaseMessage
         setBit(ISRESTART, isRestart);
     }
 
-    public CompleteTransactionMessage(long initiatorHSId, long coordinatorHSId, CompleteTransactionMessage msg)
-    {
+    public CompleteTransactionMessage(long initiatorHSId, long coordinatorHSId, CompleteTransactionMessage msg) {
         super(initiatorHSId, coordinatorHSId, msg);
         m_hash = msg.m_hash;
         m_flags = msg.m_flags;
@@ -110,16 +106,14 @@ public class CompleteTransactionMessage extends TransactionInfoBaseMessage
     }
 
     @Override
-    public int getSerializedSize()
-    {
+    public int getSerializedSize() {
         int msgsize = super.getSerializedSize();
         msgsize += 4 + 4;
         return msgsize;
     }
 
     @Override
-    public void flattenToBuffer(ByteBuffer buf) throws IOException
-    {
+    public void flattenToBuffer(ByteBuffer buf) throws IOException {
         buf.put(VoltDbMessageFactory.COMPLETE_TRANSACTION_ID);
         super.flattenToBuffer(buf);
         buf.putInt(m_hash);
@@ -129,8 +123,12 @@ public class CompleteTransactionMessage extends TransactionInfoBaseMessage
     }
 
     @Override
-    public void initFromContainer(SharedBBContainer container) throws IOException
-    {
+    protected void initFromBuffer(ByteBuffer buf) throws IOException {
+        assert(false);
+    }
+
+    @Override
+    public void initFromContainer(SharedBBContainer container) throws IOException {
         super.initFromContainer(container);
         ByteBuffer buf = container.b();
         m_hash = buf.getInt();

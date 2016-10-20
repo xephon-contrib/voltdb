@@ -36,6 +36,11 @@ public class LocalObjectMessage extends VoltMessage {
     }
 
     @Override
+    protected void initFromBuffer(ByteBuffer buf) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     protected void initFromContainer(SharedBBContainer container) throws IOException {
         throw new UnsupportedOperationException();
     }

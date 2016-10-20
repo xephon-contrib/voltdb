@@ -18,6 +18,7 @@
 package org.voltcore.messaging;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.voltcore.network.NIOReadStream;
 import org.voltcore.network.VoltProtocolHandler;
@@ -37,6 +38,22 @@ public class VoltMessageFactory {
     // Update the max value if you add a new message type above, or you
     // will be sad, and I will have no sympathy. --izzy
     final public static byte VOLTCORE_MESSAGE_ID_MAX = 7;
+
+    public VoltMessage createMessageFromBuffer(ByteBuffer buf, long sourceHSId)
+    throws IOException
+    {
+        byte type = buf.get();
+
+        // instantiate a new message instance according to the id
+        VoltMessage message = instantiate_local(type);
+        if (message == null)
+        {
+            message = instantiate(type);
+        }
+        message.m_sourceHSId = sourceHSId;
+        message.initFromBuffer(buf.duplicate());
+        return message;
+    }
 
     public VoltMessage createMessageFromContainer(SharedBBContainer container, long sourceHSId)
     throws IOException

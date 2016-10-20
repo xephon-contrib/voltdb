@@ -38,6 +38,7 @@ public abstract class VoltMessage
         return 1;
     }
 
+    protected abstract void initFromBuffer(ByteBuffer buf) throws IOException;
     protected abstract void initFromContainer(SharedBBContainer container) throws IOException;
     protected abstract void initFromInputHandler(VoltProtocolHandler handler, NIOReadStream inputStream) throws IOException;
     public abstract void flattenToBuffer(ByteBuffer buf) throws IOException;

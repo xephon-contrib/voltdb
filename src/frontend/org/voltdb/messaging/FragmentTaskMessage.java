@@ -33,6 +33,7 @@ import org.voltcore.messaging.TransactionInfoBaseMessage;
 import org.voltcore.network.NIOReadStream;
 import org.voltcore.network.VoltProtocolHandler;
 import org.voltcore.utils.CoreUtils;
+import org.voltcore.utils.HBBPool;
 import org.voltcore.utils.HBBPool.SharedBBContainer;
 import org.voltdb.ParameterSet;
 import org.voltdb.VoltDB;
@@ -139,7 +140,7 @@ public class FragmentTaskMessage extends TransactionInfoBaseMessage
 
     int m_inputDepCount = 0;
     private Iv2InitiateTaskMessage m_initiateTask;
-    ByteBuffer m_initiateTaskBuffer;
+    SharedBBContainer m_initiateTaskContainer;
     // Partitions involved in this multipart, set in the first fragment
     Set<Integer> m_involvedPartitions = ImmutableSet.of();
 
@@ -211,8 +212,8 @@ public class FragmentTaskMessage extends TransactionInfoBaseMessage
         m_involvedPartitions = ftask.m_involvedPartitions;
         m_procNameToLoad = ftask.m_procNameToLoad;
         m_batchTimeout = ftask.m_batchTimeout;
-        if (ftask.m_initiateTaskBuffer != null) {
-            m_initiateTaskBuffer = ftask.m_initiateTaskBuffer.duplicate();
+        if (ftask.m_initiateTaskContainer != null) {
+            m_initiateTaskContainer = ftask.m_initiateTaskContainer.duplicate();
         }
         assert(selfCheck());
     }
@@ -456,10 +457,10 @@ public class FragmentTaskMessage extends TransactionInfoBaseMessage
                                       Collection<Integer> involvedPartitions) {
         m_initiateTask = initiateTask;
         m_involvedPartitions = ImmutableSet.copyOf(involvedPartitions);
-        m_initiateTaskBuffer = ByteBuffer.allocate(initiateTask.getSerializedSize());
+        m_initiateTaskContainer = HBBPool.allocateHeapAndPool(initiateTask.getSerializedSize());
         try {
-            initiateTask.flattenToBuffer(m_initiateTaskBuffer);
-            m_initiateTaskBuffer.flip();
+            initiateTask.flattenToBuffer(m_initiateTaskContainer.b());
+            m_initiateTaskContainer.b().flip();
         } catch (IOException e) {
             //Executive decision, don't throw a checked exception. Let it burn.
             throw new RuntimeException(e);
@@ -609,8 +610,8 @@ public class FragmentTaskMessage extends TransactionInfoBaseMessage
 
         //nested initiate task message length prefix
         msgsize += 4;
-        if (m_initiateTaskBuffer != null) {
-            msgsize += m_initiateTaskBuffer.remaining();
+        if (m_initiateTaskContainer != null) {
+            msgsize += m_initiateTaskContainer.b().remaining();
         }
 
         // Make a pass through the fragment data items to account for the
@@ -768,8 +769,8 @@ public class FragmentTaskMessage extends TransactionInfoBaseMessage
             buf.putInt(pid);
         }
 
-        if (m_initiateTaskBuffer != null) {
-            ByteBuffer dup = m_initiateTaskBuffer.duplicate();
+        if (m_initiateTaskContainer != null) {
+            ByteBuffer dup = m_initiateTaskContainer.b().duplicate();
             buf.putInt(dup.remaining());
             buf.put(dup);
         } else {
@@ -795,6 +796,11 @@ public class FragmentTaskMessage extends TransactionInfoBaseMessage
                 buf.put(item.m_stmtText);
             }
         }
+    }
+
+    @Override
+    protected void initFromBuffer(ByteBuffer buf) throws IOException {
+        assert(false);
     }
 
     @Override
@@ -907,27 +913,20 @@ public class FragmentTaskMessage extends TransactionInfoBaseMessage
         m_involvedPartitions = involvedPartitionsBuilder.build();
 
         int initiateTaskMessageLength = buf.getInt();
+        int startPosition = buf.position();
         if (initiateTaskMessageLength > 0) {
-            int startPosition = buf.position();
             Iv2InitiateTaskMessage message = new Iv2InitiateTaskMessage();
-            // EHGAWD: init task was serialized with flatten which added
-            // the message type byte. deserialization expects the message
-            // factory to have stripped that byte. but ... that's not the
-            // way we do it here. So read the message type byte...
+            if (m_initiateTaskContainer == null) {
+                int realLimit = buf.limit();
+                buf.limit(startPosition + initiateTaskMessageLength);
+                m_initiateTaskContainer = container.slice();
+                buf.limit(realLimit);
+            }
             byte messageType = buf.get();
             assert(messageType == VoltDbMessageFactory.IV2_INITIATE_TASK_ID);
+            container.implicitReference();
             message.initFromContainer(container);
             m_initiateTask = message;
-            if (m_initiateTask != null && m_initiateTaskBuffer == null) {
-                m_initiateTaskBuffer = ByteBuffer.allocate(m_initiateTask.getSerializedSize());
-                try {
-                    m_initiateTask.flattenToBuffer(m_initiateTaskBuffer);
-                    m_initiateTaskBuffer.flip();
-                } catch (IOException e) {
-                    //Executive decision, don't throw a checked exception. Let it burn.
-                    throw new RuntimeException(e);
-                }
-            }
 
             /*
              * There is an assertion that all bytes of the message are consumed.
@@ -958,6 +957,9 @@ public class FragmentTaskMessage extends TransactionInfoBaseMessage
     public void discard() {
         if (m_initiateTask != null) {
             m_initiateTask.discard();
+        }
+        if (m_initiateTaskContainer != null) {
+            m_initiateTaskContainer.discard();
         }
     }
 

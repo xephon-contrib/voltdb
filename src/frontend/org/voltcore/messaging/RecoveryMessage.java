@@ -134,6 +134,11 @@ public class RecoveryMessage extends VoltMessage {
     }
 
     @Override
+    protected void initFromBuffer(ByteBuffer buf) throws IOException {
+        assert(false);
+    }
+
+    @Override
     protected void initFromContainer(SharedBBContainer container) throws IOException {
         ByteBuffer buf = container.b();
         m_recoveryMessagesAvailable = false;

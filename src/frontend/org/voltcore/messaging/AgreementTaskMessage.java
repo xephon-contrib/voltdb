@@ -44,9 +44,7 @@ public class AgreementTaskMessage extends VoltMessage {
     }
 
     @Override
-    public void initFromContainer(SharedBBContainer container) {}
-
-    private void initFromBuffer(ByteBuffer buf) {
+    protected void initFromBuffer(ByteBuffer buf) throws IOException {
         m_txnId = buf.getLong();
         m_initiatorHSId = buf.getLong();
         m_lastSafeTxnId = buf.getLong();
@@ -67,6 +65,11 @@ public class AgreementTaskMessage extends VoltMessage {
 
         m_request = new Request(null, sessionId, cxid, type, requestBuffer, ImmutableList.<Id>of());
         assert(buf.limit() == buf.position());
+    }
+
+    @Override
+    public void initFromContainer(SharedBBContainer container) {
+        assert(false);
     }
 
     @Override

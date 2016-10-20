@@ -197,6 +197,11 @@ public class InitiateTaskMessage extends TransactionInfoBaseMessage {
     }
 
     @Override
+    protected void initFromBuffer(ByteBuffer buf) throws IOException {
+        assert(false);
+    }
+
+    @Override
     public void initFromContainer(SharedBBContainer container) throws IOException {
         // Assumes that subclasses do not keep references to the bbContainer
         super.initFromContainer(container);

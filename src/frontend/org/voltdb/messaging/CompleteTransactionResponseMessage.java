@@ -40,8 +40,7 @@ public class CompleteTransactionResponseMessage extends VoltMessage
         super();
     }
 
-    public CompleteTransactionResponseMessage(CompleteTransactionMessage msg)
-    {
+    public CompleteTransactionResponseMessage(CompleteTransactionMessage msg) {
         m_txnId = msg.getTxnId();
         m_spHandle = msg.getSpHandle();
         m_isRestart = msg.isRestart();
@@ -52,28 +51,23 @@ public class CompleteTransactionResponseMessage extends VoltMessage
         return m_txnId;
     }
 
-    public long getSpHandle()
-    {
+    public long getSpHandle() {
         return m_spHandle;
     }
 
-    public long getSPIHSId()
-    {
+    public long getSPIHSId() {
         return m_spiHSId;
     }
 
-    public boolean isRestart()
-    {
+    public boolean isRestart() {
         return m_isRestart;
     }
 
-    public boolean isRecovering()
-    {
+    public boolean isRecovering() {
         return m_isRecovering;
     }
 
-    public void setIsRecovering(boolean recovering)
-    {
+    public void setIsRecovering(boolean recovering) {
         m_isRecovering = recovering;
     }
 
@@ -94,6 +88,11 @@ public class CompleteTransactionResponseMessage extends VoltMessage
         buf.put((byte) (m_isRecovering ? 1 : 0));
         assert(buf.limit() == buf.position());
         buf.limit(buf.position());
+    }
+
+    @Override
+    protected void initFromBuffer(ByteBuffer buf) throws IOException {
+        assert(false);
     }
 
     @Override

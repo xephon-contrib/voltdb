@@ -72,13 +72,10 @@ public class SnapshotCheckResponseMessage extends VoltMessage {
         return size;
     }
 
-    @Override
-    protected void initFromContainer(SharedBBContainer container) throws IOException {}
-
     // It is best to use a regular buffer here because we build VoltTables directly on top of the buffer
     // and we don't know how to reference count them
-    private void initFromBuffer(ByteBuffer buf) throws IOException
-    {
+    @Override
+    protected void initFromBuffer(ByteBuffer buf) throws IOException {
         m_path = new byte[buf.getInt()];
         buf.get(m_path);
         m_stypeBytes = new byte[buf.getInt()];
@@ -87,6 +84,11 @@ public class SnapshotCheckResponseMessage extends VoltMessage {
         buf.get(m_nonce);
         m_response = PrivateVoltTableFactory.createVoltTableFromSharedBuffer(buf);
         m_stype = SnapshotPathType.valueOf(new String(m_stypeBytes, Charsets.UTF_8));
+    }
+
+    @Override
+    protected void initFromContainer(SharedBBContainer container) throws IOException {
+        assert(false);
     }
 
     @Override

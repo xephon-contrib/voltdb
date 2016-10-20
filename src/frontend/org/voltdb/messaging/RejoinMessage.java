@@ -151,6 +151,11 @@ public class RejoinMessage extends VoltMessage {
     }
 
     @Override
+    protected void initFromBuffer(ByteBuffer buf) throws IOException {
+        assert(false);
+    }
+
+    @Override
     protected void initFromContainer(SharedBBContainer container) throws IOException {
         container.discard();
         throw new RuntimeException("RejoinMessage: Attempted to deserialize a message which should never need it.");

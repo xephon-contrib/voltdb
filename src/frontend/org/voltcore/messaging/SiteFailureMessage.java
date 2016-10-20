@@ -69,7 +69,12 @@ public class SiteFailureMessage extends VoltMessage {
     }
 
     @Override
-    public void initFromContainer(SharedBBContainer container) {
+    protected void initFromBuffer(ByteBuffer buf) throws IOException {
+        assert(false);
+    }
+
+    @Override
+    public void initFromContainer(SharedBBContainer container) throws IOException {
         ByteBuffer buf = container.b();
         int srvrcnt = buf.getInt();
         int safecnt = buf.getInt();

@@ -34,25 +34,26 @@ import org.voltcore.utils.HBBPool.SharedBBContainer;
  */
 public class DumpMessage extends VoltMessage
 {
-    public DumpMessage()
-    {
+    public DumpMessage() {
         super();
     }
 
     @Override
-    public int getSerializedSize()
-    {
+    public int getSerializedSize() {
         int msgsize = super.getSerializedSize();
         return msgsize;
     }
 
     @Override
-    public void flattenToBuffer(ByteBuffer buf) throws IOException
-    {
+    public void flattenToBuffer(ByteBuffer buf) throws IOException {
         buf.put(VoltDbMessageFactory.DUMP);
 
         assert(buf.limit() == buf.position());
         buf.limit(buf.position());
+    }
+
+    @Override
+    protected void initFromBuffer(ByteBuffer buf) throws IOException {
     }
 
     @Override

@@ -81,6 +81,11 @@ public class Iv2LogFaultMessage extends VoltMessage
     }
 
     @Override
+    protected void initFromBuffer(ByteBuffer buf) throws IOException {
+        assert(false);
+    }
+
+    @Override
     public void initFromContainer(SharedBBContainer container) {
         ByteBuffer buf = container.b();
         m_spHandle = buf.getLong();

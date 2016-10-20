@@ -82,17 +82,22 @@ public class Iv2RepairLogRequestMessage extends VoltMessage
     }
 
     @Override
+    protected void initFromBuffer(ByteBuffer buf) throws IOException {
+        assert(false);
+    }
+
+    @Override
     protected void initFromContainer(SharedBBContainer container) throws IOException {
         ByteBuffer buf = container.b();
         m_requestId = buf.getLong();
         m_requestType = buf.getInt();
+        assert(buf.limit() == buf.position());
+        container.discard();
     }
 
     @Override
     public void initFromInputHandler(VoltProtocolHandler handler, NIOReadStream inputStream) throws IOException {
-        SharedBBContainer sharedContainer = handler.getNextHBBMessage(inputStream);
-        initFromContainer(sharedContainer);
-        sharedContainer.discard();
+        initFromContainer(handler.getNextHBBMessage(inputStream));
     }
 
     @Override
