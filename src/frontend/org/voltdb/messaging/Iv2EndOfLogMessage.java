@@ -69,12 +69,12 @@ public class Iv2EndOfLogMessage extends TransactionInfoBaseMessage
     {
         super.initFromContainer(container);
         m_pid = container.b().getInt();
-        container.discard();
+        container.discard(getClass().getName());
     }
 
     @Override
     public void initFromInputHandler(VoltProtocolHandler handler, NIOReadStream inputStream) throws IOException {
-        initFromContainer(handler.getNextHBBMessage(inputStream));
+        initFromContainer(handler.getNextHBBMessage(inputStream, getClass().getName()));
     }
 
     @Override
@@ -89,10 +89,10 @@ public class Iv2EndOfLogMessage extends TransactionInfoBaseMessage
     }
 
     @Override
-    public void implicitReference() {}
+    public void implicitReference(String tag) {}
 
     @Override
-    public void discard() {}
+    public void discard(String tag) {}
 
     @Override
     public String toString() {

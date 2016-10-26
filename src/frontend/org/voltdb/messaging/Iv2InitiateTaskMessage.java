@@ -190,20 +190,20 @@ public class Iv2InitiateTaskMessage extends TransactionInfoBaseMessage {
         m_isSinglePartition = buf.get() == 1;
         m_shouldReturnResultTables = buf.get() != 0;
         SPIfromSerializedContainer serializedSPI = new SPIfromSerializedContainer();
-        serializedSPI.initFromContainer(container);
-        container.discard();
+        serializedSPI.initFromContainer(container, "Params");
+        container.discard(getClass().getSimpleName());
         m_invocation = serializedSPI;
     }
 
     @Override
     public void initFromInputHandler(VoltProtocolHandler handler, NIOReadStream inputStream) throws IOException {
-        initFromContainer(handler.getNextHBBMessage(inputStream));
+        initFromContainer(handler.getNextHBBMessage(inputStream, getClass().getSimpleName()));
     }
 
     @Override
-    public void discard() {
+    public void discard(String tag) {
         if (m_invocation != null) {
-            m_invocation.discard();
+            m_invocation.discard(tag);
         }
     }
 
@@ -257,8 +257,8 @@ public class Iv2InitiateTaskMessage extends TransactionInfoBaseMessage {
         return sb.toString();
     }
 
-    public void implicitReference() {
-        m_invocation.implicitReference();
+    public void implicitReference(String tag) {
+        m_invocation.implicitReference(tag);
     }
 
     public ByteBuffer getSerializedParams() {

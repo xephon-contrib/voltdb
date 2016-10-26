@@ -67,13 +67,13 @@ public class SPIfromParameterArray extends StoredProcedureInvocation {
      */
     @Override
     public SPIfromSerialization roundTripForCL() throws IOException {
-        SharedBBContainer bbContainer = HBBPool.allocateHeapAndPool(getSerializedSize());
+        SharedBBContainer bbContainer = HBBPool.allocateHeapAndPool(getSerializedSize(),"RoundTrip");
         flattenToBuffer(bbContainer.b());
         bbContainer.b().flip();
 
         SPIfromSerializedContainer rti = new SPIfromSerializedContainer();
-        rti.initFromContainer(bbContainer);
-        bbContainer.discard();
+        rti.initFromContainer(bbContainer, "Params");
+        bbContainer.discard("RoundTrip");
         return rti;
     }
 
@@ -138,8 +138,8 @@ public class SPIfromParameterArray extends StoredProcedureInvocation {
     }
 
     @Override
-    public void implicitReference() {}
+    public void implicitReference(String tag) {}
 
     @Override
-    public void discard() {}
+    public void discard(String tag) {}
 }

@@ -28,6 +28,7 @@ import org.voltcore.utils.CoreUtils;
 import org.voltcore.utils.HBBPool.SharedBBContainer;
 import org.voltcore.utils.Pair;
 import org.voltdb.ClientResponseImpl;
+import org.voltdb.SPIfromSerialization;
 import org.voltdb.SPIfromSerializedContainer;
 import org.voltdb.StoredProcedureInvocation;
 import org.voltdb.VoltTable;
@@ -53,7 +54,7 @@ public class InitiateResponseMessage extends VoltMessage {
 
     // Mis-partitioned invocation needs to send the invocation back to ClientInterface for restart
     private boolean m_mispartitioned;
-    private StoredProcedureInvocation m_invocation;
+    private SPIfromSerialization m_invocation;
     private Pair<Long, byte[]> m_currentHashinatorConfig;
 
     /** Empty constructor for de-serialization */
@@ -160,10 +161,11 @@ public class InitiateResponseMessage extends VoltMessage {
         return m_currentHashinatorConfig;
     }
 
-    public void setMispartitioned(boolean mispartitioned, StoredProcedureInvocation invocation,
+    public void setMispartitioned(boolean mispartitioned, SPIfromSerialization invocation,
                                   Pair<Long, byte[]> currentHashinatorConfig) {
+        assert(invocation != null);
         m_mispartitioned = mispartitioned;
-        m_invocation = invocation;
+        m_invocation = (SPIfromSerialization)invocation.getShallowCopy();
         m_currentHashinatorConfig = currentHashinatorConfig;
         m_commit = false;
         m_response = new ClientResponseImpl(ClientResponse.TXN_RESTART, new VoltTable[]{}, "Mispartitioned");
@@ -256,25 +258,25 @@ public class InitiateResponseMessage extends VoltMessage {
             m_currentHashinatorConfig = Pair.of(hashinatorVersion, hashinatorBytes);
             // SPI must be the last to deserialize, it will take the remaining as parameter bytes
             SPIfromSerializedContainer serializedSPI = new SPIfromSerializedContainer();
-            serializedSPI.initFromContainer(container);
+            serializedSPI.initFromContainer(container, "Params");
             m_invocation = serializedSPI;
             m_commit = false;
         }
-        container.discard();
+        container.discard(getClass().getSimpleName());
     }
 
     @Override
     public void initFromInputHandler(VoltProtocolHandler handler, NIOReadStream inputStream) throws IOException {
-        initFromContainer(handler.getNextHBBMessage(inputStream));
+        initFromContainer(handler.getNextHBBMessage(inputStream, getClass().getSimpleName()));
     }
 
     @Override
-    public void implicitReference() {}
+    public void implicitReference(String tag) {}
 
     @Override
-    public void discard() {
+    public void discard(String tag) {
         if (m_mispartitioned) {
-            m_invocation.discard();
+            m_invocation.discard(tag);
         }
     }
 

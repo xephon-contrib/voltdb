@@ -64,12 +64,12 @@ public class SnapshotCheckRequestMessage extends VoltMessage {
         ByteBuffer buf = container.b();
         m_requestJson = new byte[buf.getInt()];
         buf.get(m_requestJson);
-        container.discard();
+        container.discard(getClass().getSimpleName());
     }
 
     @Override
     public void initFromInputHandler(VoltProtocolHandler handler, NIOReadStream inputStream) throws IOException {
-        initFromContainer(handler.getNextHBBMessage(inputStream));
+        initFromContainer(handler.getNextHBBMessage(inputStream, getClass().getSimpleName()));
     }
 
     @Override
@@ -81,8 +81,8 @@ public class SnapshotCheckRequestMessage extends VoltMessage {
     }
 
     @Override
-    public void implicitReference() {}
+    public void implicitReference(String tag) {}
 
     @Override
-    public void discard() {}
+    public void discard(String tag) {}
 }

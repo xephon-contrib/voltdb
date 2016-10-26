@@ -86,19 +86,19 @@ public class HeartbeatResponseMessage extends VoltMessage {
         m_lastReceivedTxnId = buf.getLong();
         m_siteIsBlocked = (buf.get() == 1);
         assert(buf.limit() == buf.position());
-        container.discardNoLogging();
+        container.discardNoLogging(getClass().getSimpleName());
     }
 
     @Override
     public void initFromInputHandler(VoltProtocolHandler handler, NIOReadStream inputStream) throws IOException {
-        initFromContainer(handler.getNextHBBMessageNoLogging(inputStream));
+        initFromContainer(handler.getNextHBBMessageNoLogging(inputStream, getClass().getSimpleName()));
     }
 
     @Override
-    public void implicitReference() {}
+    public void implicitReference(String tag) {}
 
     @Override
-    public void discard() {}
+    public void discard(String tag) {}
 
     @Override
     public String toString() {

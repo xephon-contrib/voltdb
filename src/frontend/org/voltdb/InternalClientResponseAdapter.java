@@ -177,6 +177,7 @@ public class InternalClientResponseAdapter implements Connection, WriteStream {
 
         ExecutorService executor = m_partitionExecutor.get(partition);
         try {
+            task.implicitReference("AsyncRunnable");
             executor.submit(new Runnable() {
                 @Override
                 public void run() {
@@ -202,6 +203,7 @@ public class InternalClientResponseAdapter implements Connection, WriteStream {
                             m_logger.error("failed to process dispatch response " + r.getStatusString(), e);
                         } finally {
                             m_callbacks.remove(handle);
+                            task.discard("AsyncRunnable");
                         }
                         return bval;
                     }
@@ -211,6 +213,7 @@ public class InternalClientResponseAdapter implements Connection, WriteStream {
                         // Supposedly this will never happen and is OK to ignore from stats collection perspective.
                         // Hence it is OK that this is not getting reported to callbacks.
                         m_logger.error("Failed to submit transaction.");
+                        task.discard("AsyncRunnable");
                         m_callbacks.remove(handle);
                     }
                     return bval;

@@ -116,16 +116,16 @@ public abstract class VoltProtocolHandler implements InputHandler {
         return result;
     }
 
-    public SharedBBContainer getNextHBBMessage(final NIOReadStream inputStream) {
-        SharedBBContainer result = HBBPool.allocateHeapAndPool(m_nextLength);
+    public SharedBBContainer getNextHBBMessage(final NIOReadStream inputStream, final String tag) {
+        SharedBBContainer result = HBBPool.allocateHeapAndPool(m_nextLength, tag);
         inputStream.getCountedBytes(result.b().array(), m_nextLength);
         m_nextLength = 0;
         m_sequenceId++;
         return result;
     }
 
-    public SharedBBContainer getNextHBBMessageNoLogging(final NIOReadStream inputStream) {
-        SharedBBContainer result = HBBPool.allocateHeapAndPoolNoLogging(m_nextLength);
+    public SharedBBContainer getNextHBBMessageNoLogging(final NIOReadStream inputStream, final String tag) {
+        SharedBBContainer result = HBBPool.allocateHeapAndPoolNoLogging(m_nextLength, tag);
         inputStream.getCountedBytes(result.b().array(), m_nextLength);
         m_nextLength = 0;
         m_sequenceId++;

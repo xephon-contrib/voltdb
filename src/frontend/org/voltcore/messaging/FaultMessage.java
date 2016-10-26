@@ -103,10 +103,10 @@ public final class FaultMessage extends VoltMessage {
     }
 
     @Override
-    public void implicitReference() {}
+    public void implicitReference(String tag) {}
 
     @Override
-    public void discard() {}
+    public void discard(String tag) {}
 
     @Override
     public String toString() {

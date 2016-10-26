@@ -90,20 +90,20 @@ public class Iv2LogFaultMessage extends VoltMessage
         ByteBuffer buf = container.b();
         m_spHandle = buf.getLong();
         m_spUniqueId = buf.getLong();
+        container.discard(getClass().getSimpleName());
     }
 
     @Override
     public void initFromInputHandler(VoltProtocolHandler handler, NIOReadStream inputStream) throws IOException {
-        SharedBBContainer sharedContainer = handler.getNextHBBMessage(inputStream);
+        SharedBBContainer sharedContainer = handler.getNextHBBMessage(inputStream, getClass().getSimpleName());
         initFromContainer(sharedContainer);
-        sharedContainer.discard();
     }
 
     @Override
-    public void implicitReference() {}
+    public void implicitReference(String tag) {}
 
     @Override
-    public void discard() {}
+    public void discard(String tag) {}
 
     @Override
     public String toString() {

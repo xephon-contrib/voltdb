@@ -83,8 +83,8 @@ public class SPIfromSerializedBuffer extends SPIfromSerialization {
     }
 
     @Override
-    public void implicitReference() {}
+    public void implicitReference(String tag) {}
 
     @Override
-    public void discard() {}
+    public void discard(String tag) {}
 }

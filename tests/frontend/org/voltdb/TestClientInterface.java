@@ -34,6 +34,7 @@ import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -260,7 +261,7 @@ public class TestClientInterface {
         m_periodicWorkThread.awaitTermination(356, TimeUnit.DAYS);
         VoltMessage msg;
         while ((msg = sentMessages.poll()) != null) {
-            msg.discard();
+            msg.discard("SendOrDone"+CoreUtils.hsIdToString(0));
         }
         assertTrue(HBBPool.debugAllBuffersReturned());
     }
@@ -278,7 +279,7 @@ public class TestClientInterface {
         SPIfromParameterArray proc = new SPIfromParameterArray();
         proc.setProcName(name);
         proc.setParams(params);
-        SharedBBContainer rslt = HBBPool.allocateHeapAndPool(proc.getSerializedSize());
+        SharedBBContainer rslt = HBBPool.allocateHeapAndPool(proc.getSerializedSize(), "Invocation");
         proc.flattenToBuffer(rslt.b());
         rslt.b().flip();
         return rslt;
@@ -316,7 +317,7 @@ public class TestClientInterface {
             ArgumentCaptor.forClass(Long.class);
         ArgumentCaptor<Iv2InitiateTaskMessage> messageCaptor =
             ArgumentCaptor.forClass(Iv2InitiateTaskMessage.class);
-        verify(m_messenger).send(destinationCaptor.capture(), messageCaptor.capture());
+        verify(m_messenger, atLeastOnce()).send(destinationCaptor.capture(), messageCaptor.capture());
 
         Iv2InitiateTaskMessage message = messageCaptor.getValue();
         assertEquals(isReadonly, message.isReadOnly()); // readonly
@@ -337,7 +338,7 @@ public class TestClientInterface {
         SharedBBContainer msg = createMsg("@Explain", "select * from a");
         ClientResponseImpl resp = m_ci.handleRead(msg, m_handler, m_cxn);
         assertNull(resp);
-        msg.discard();
+        msg.discard("Invocation");
         ArgumentCaptor<LocalObjectMessage> captor = ArgumentCaptor.forClass(LocalObjectMessage.class);
         verify(m_messenger).send(eq(32L), captor.capture());
         assertTrue(captor.getValue().payload instanceof AdHocPlannerWork );
@@ -356,7 +357,7 @@ public class TestClientInterface {
         assertTrue(captor.getValue().payload instanceof AdHocPlannerWork);
         String payloadString = captor.getValue().payload.toString();
         assertTrue(payloadString.contains("user partitioning: none"));
-        msg.discard();
+        msg.discard("Invocation");
 
         // single-part adhoc
         reset(m_messenger);
@@ -368,7 +369,7 @@ public class TestClientInterface {
         payloadString = captor.getValue().payload.toString();
         assertTrue(payloadString.contains("user params: empty"));
         assertTrue(payloadString.contains("user partitioning: 3"));
-        msg.discard();
+        msg.discard("Invocation");
     }
 
     @Test
@@ -462,7 +463,7 @@ public class TestClientInterface {
             verify(m_messenger).send(eq(32L), // A fixed number set in setUpOnce()
                                      captor.capture());
             assertTrue(captor.getValue().payload instanceof CatalogChangeWork);
-            msg.discard();
+            msg.discard("Params");
         }
     }
 
@@ -473,7 +474,7 @@ public class TestClientInterface {
         // expect an error response from handleRead.
         assertNotNull(resp);
         assertTrue(resp.getStatus() != 0);
-        msg.discard();
+        msg.discard("Invocation");
     }
 
 
@@ -525,7 +526,7 @@ public class TestClientInterface {
         StoredProcedureInvocation invocation =
                 readAndCheck(msg, "hello", 1, true, true).getStoredProcedureInvocation();
         assertEquals(1, invocation.getParameterAtIndex(0));
-        msg.discard();
+        msg.discard("Invocation");
     }
 
     @Test
@@ -543,7 +544,7 @@ public class TestClientInterface {
         assertTrue(vt.advanceRow());
         //System.gc() should take at least a little time
         assertTrue(resp.getResults()[0].getLong(0) > 10000);
-        msg.discard();
+        msg.discard("Invocation");
     }
 
     @Test
@@ -553,7 +554,7 @@ public class TestClientInterface {
         assertNull(resp);
         verify(m_sysinfoAgent).performOpsAction(any(Connection.class), anyInt(), eq(OpsSelector.SYSTEMINFORMATION),
                 any(ParameterSet.class));
-        msg.discard();
+        msg.discard("Invocation");
     }
 
     /**
@@ -566,7 +567,7 @@ public class TestClientInterface {
         ClientResponseImpl resp = m_ci.handleRead(msg, m_handler, m_cxn);
         assertNull(resp);
         assertEquals(drStatsInvoked, 1);
-        msg.discard();
+        msg.discard("Invocation");
     }
 
     @Test
@@ -579,7 +580,7 @@ public class TestClientInterface {
         StoredProcedureInvocation invocation =
                 readAndCheck(msg, "@LoadSinglepartitionTable", partitionParam, false, true).getStoredProcedureInvocation();
         assertEquals((byte) 0, invocation.getParameterAtIndex(2));
-        msg.discard();
+        msg.discard("Invocation");
     }
 
     @Test
@@ -592,7 +593,7 @@ public class TestClientInterface {
         StoredProcedureInvocation invocation =
                 readAndCheck(msg, "@LoadSinglepartitionTable", partitionParam, false, true).getStoredProcedureInvocation();
         assertEquals((byte) 1, invocation.getParameterAtIndex(2));
-        msg.discard();
+        msg.discard("Invocation");
     }
 
     @Test
@@ -615,7 +616,7 @@ public class TestClientInterface {
         SharedBBContainer msg = createMsg("hello", 1);
         ClientResponseImpl resp = m_ci.handleRead(msg, m_handler, m_cxn);
         assertNull(resp);
-        msg.discard();
+        msg.discard("Invocation");
 
         // writes are not allowed
         msg = createMsg("hellorw", "10");
@@ -629,7 +630,7 @@ public class TestClientInterface {
         }
 
         when(m_volt.getMode()).thenReturn(OperationMode.RUNNING);
-        msg.discard();
+        msg.discard("Invocation");
     }
 
     @Test
@@ -659,7 +660,7 @@ public class TestClientInterface {
         plannedStmt.clientData = m_cxn;
         m_ci.getDispatcher().processFinishedCompilerWork(plannedStmt).run();
         assertEquals(0, responses.size());
-        msg.discard();
+        msg.discard("Invocation");
 
         query = "insert into A values (10)";
         msg = createMsg("@AdHoc", query);
@@ -681,7 +682,7 @@ public class TestClientInterface {
         }
 
         when(m_volt.getMode()).thenReturn(OperationMode.RUNNING);
-        msg.discard();
+        msg.discard("Invocation");
     }
 
     @Test
@@ -691,7 +692,7 @@ public class TestClientInterface {
         assertNotNull(resp);
         assertEquals(ClientResponse.UNEXPECTED_FAILURE, resp.getStatus());
         // Message not sent so discard here
-        msg.discard();
+        msg.discard("Invocation");
     }
 
     @Test
@@ -701,14 +702,14 @@ public class TestClientInterface {
         assertNotNull(resp);
         assertEquals(ClientResponse.UNEXPECTED_FAILURE, resp.getStatus());
         // Message not sent so discard here
-        msg.discard();
+        msg.discard("Invocation");
 
         msg = createMsg("@Resume");
         resp = m_ci.handleRead(msg, m_handler, m_cxn);
         assertNotNull(resp);
         assertEquals(ClientResponse.UNEXPECTED_FAILURE, resp.getStatus());
         // Message not sent so discard here
-        msg.discard();
+        msg.discard("Invocation");
     }
 
     @Test
@@ -719,7 +720,7 @@ public class TestClientInterface {
         assertNotNull(resp);
         assertEquals(ClientResponse.GRACEFUL_FAILURE, resp.getStatus());
         // Message not sent so discard here
-        msg.discard();
+        msg.discard("Invocation");
     }
 
     @Test
@@ -730,7 +731,7 @@ public class TestClientInterface {
         verify(m_zk, never()).create(eq(VoltZK.request_truncation_snapshot_node), any(byte[].class),
                                      eq(Ids.OPEN_ACL_UNSAFE), eq(CreateMode.PERSISTENT));
         // Message not sent so discard here
-        msg.discard();
+        msg.discard("Invocation");
     }
 
     @Test
@@ -745,7 +746,7 @@ public class TestClientInterface {
             verify(m_zk, never()).create(eq(VoltZK.request_truncation_snapshot_node), any(byte[].class),
                                 eq(Ids.OPEN_ACL_UNSAFE), eq(CreateMode.PERSISTENT_SEQUENTIAL));
             // Message not sent so discard here
-            msg.discard();
+            msg.discard("Invocation");
         }
         finally {
             logConfig.setEnabled(wasEnabled);
@@ -781,11 +782,13 @@ public class TestClientInterface {
 
         // fake a restart response
         InitiateResponseMessage respMsg = new InitiateResponseMessage(initMsg);
-        respMsg.setMispartitioned(true, initMsg.getStoredProcedureInvocation(),
+        respMsg.setMispartitioned(true, (SPIfromSerialization)initMsg.getStoredProcedureInvocation(),
                                   Pair.of(newHashinatorVersion, hashinatorConfig.getSecond()));
 
-        // reset the message so that we can check for restart later
-        reset(m_messenger);
+        if (!shouldRestart) {
+            // reset the messenger so that we can check that the restarted message was not sent
+            reset(m_messenger);
+        }
 
         // Deliver a restart response
         m_ci.m_mailbox.deliver(respMsg);
@@ -796,7 +799,6 @@ public class TestClientInterface {
         if (shouldRestart) {
             assertEquals(-1, resp.getSerializedSize());
             checkInitMsgSent("hello", 1, true, true);
-            respMsg.discard();
         } else {
             assertTrue(-1 != resp.getSerializedSize());
             verify(m_messenger, never()).send(anyLong(), any(VoltMessage.class));
@@ -804,7 +806,8 @@ public class TestClientInterface {
 
         // the hashinator should've been updated in either case
         assertEquals(newHashinatorVersion, TheHashinator.getCurrentVersionedConfig().getFirst().longValue());
-        msg.discard();
+        respMsg.discard("Params");
+        msg.discard("Invocation");
     }
 
     @Test
@@ -814,42 +817,42 @@ public class TestClientInterface {
         ClientResponseImpl resp = m_ci.handleRead(msg, m_handler, m_cxn);
         assertNotNull(resp);
         assertEquals(ClientResponse.GRACEFUL_FAILURE, resp.getStatus());
-        msg.discard();
+        msg.discard("Invocation");
 
         //Null param
         msg = createMsg("@GetPartitionKeys", new Object[] { null });
         resp = m_ci.handleRead(msg, m_handler, m_cxn);
         assertNotNull(resp);
         assertEquals(ClientResponse.GRACEFUL_FAILURE, resp.getStatus());
-        msg.discard();
+        msg.discard("Invocation");
 
         //Empty string param
         msg = createMsg("@GetPartitionKeys", "");
         resp = m_ci.handleRead(msg, m_handler, m_cxn);
         assertNotNull(resp);
         assertEquals(ClientResponse.GRACEFUL_FAILURE, resp.getStatus());
-        msg.discard();
+        msg.discard("Invocation");
 
         //Junk string
         msg = createMsg("@GetPartitionKeys", "ryanlikestheyankees");
         resp = m_ci.handleRead(msg, m_handler, m_cxn);
         assertNotNull(resp);
         assertEquals(ClientResponse.GRACEFUL_FAILURE, resp.getStatus());
-        msg.discard();
+        msg.discard("Invocation");
 
         //No param
         msg = createMsg("@GetPartitionKeys");
         resp = m_ci.handleRead(msg, m_handler, m_cxn);
         assertNotNull(resp);
         assertEquals(ClientResponse.GRACEFUL_FAILURE, resp.getStatus());
-        msg.discard();
+        msg.discard("Invocation");
 
         //Extra param
         msg = createMsg("@GetPartitionKeys", "INTEGER", 99);
         resp = m_ci.handleRead(msg, m_handler, m_cxn);
         assertNotNull(resp);
         assertEquals(ClientResponse.GRACEFUL_FAILURE, resp.getStatus());
-        msg.discard();
+        msg.discard("Invocation");
 
         //Correct param with no case sensitivity
         msg = createMsg("@GetPartitionKeys", "InTeGeR");
@@ -859,7 +862,7 @@ public class TestClientInterface {
         VoltTable vt = resp.getResults()[0];
         assertEquals(3, vt.getRowCount());
         assertEquals(VoltType.INTEGER, vt.getColumnType(1));
-        msg.discard();
+        msg.discard("Invocation");
 
         Set<Integer> partitions = new HashSet<>(Arrays.asList( 0, 1, 2));
         while (vt.advanceRow()) {
@@ -896,7 +899,7 @@ public class TestClientInterface {
             ByteBuffer actualBuf = ByteBuffer.allocate(ds.getSerializedSize());
             ds.serialize(actualBuf);
             assertEquals(expectedBuf, actualBuf);
-            msg.discard();
+            msg.discard("Invocation");
         } finally {
             RateLimitedClientNotifier.WARMUP_MS = 1000;
             ClientInterface.TOPOLOGY_CHANGE_CHECK_MS = 5000;

@@ -206,25 +206,25 @@ public class Iv2RepairLogResponseMessage extends VoltMessage
             m_hashinatorConfig = new byte[buf.getInt()];
             buf.get(m_hashinatorConfig);
         }
-        container.discard();
+        container.discard(getClass().getSimpleName());
     }
 
     @Override
     public void initFromInputHandler(VoltProtocolHandler handler, NIOReadStream inputStream) throws IOException {
-        initFromContainer(handler.getNextHBBMessage(inputStream));
+        initFromContainer(handler.getNextHBBMessage(inputStream, getClass().getSimpleName()));
     }
 
     @Override
-    public void implicitReference() {
+    public void implicitReference(String tag) {
         if (m_payload != null) {
-            m_payload.implicitReference();
+            m_payload.implicitReference(tag);
         }
     }
 
     @Override
-    public void discard() {
+    public void discard(String tag) {
         if (m_payload != null) {
-            m_payload.discard();
+            m_payload.discard(tag);
         }
     }
 

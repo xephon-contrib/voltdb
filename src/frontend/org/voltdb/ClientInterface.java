@@ -761,7 +761,7 @@ public class ClientInterface implements SnapshotDaemon.DaemonInitiator {
         public void handleMessage(NIOReadStream inputStream, Connection c) {
             SharedBBContainer container = null;
             try {
-                container = getNextHBBMessage(inputStream);
+                container = getNextHBBMessage(inputStream, "Client");
                 final ClientResponseImpl error = handleRead(container, this, c);
                 if (error != null) {
                     ByteBuffer buf = ByteBuffer.allocate(error.getSerializedSize() + 4);
@@ -769,10 +769,10 @@ public class ClientInterface implements SnapshotDaemon.DaemonInitiator {
                     error.flattenToBuffer(buf).flip();
                     c.writeStream().enqueue(buf);
                 }
-                container.discard();
+                container.discard("Client");
             } catch (Exception e) {
                 if (container != null)
-                    container.discard();
+                    container.discard("Client");
                 throw new RuntimeException(e);
             }
         }
@@ -979,16 +979,18 @@ public class ClientInterface implements SnapshotDaemon.DaemonInitiator {
 
                 try {
                     ProcedurePartitionInfo ppi = (ProcedurePartitionInfo)catProc.getAttachment();
+                    StoredProcedureInvocation invocation = response.getInvocation().getShallowCopy();
                     int partition = InvocationDispatcher.getPartitionForProcedure(ppi.index,
-                            ppi.type, response.getInvocation());
+                            ppi.type, invocation);
                     createTransaction(cihm.connection.connectionId(),
-                            response.getInvocation(),
+                            invocation,
                             isReadonly,
                             true, // Only SP could be mis-partitioned
                             false, // Only SP could be mis-partitioned
                             partition,
                             messageSize,
                             nowNanos);
+                    invocation.discard("Params");
                     return true;
                 } catch (Exception e) {
                     // unable to hash to a site, return an error
@@ -1345,7 +1347,7 @@ public class ClientInterface implements SnapshotDaemon.DaemonInitiator {
     final ClientResponseImpl handleRead(SharedBBContainer container, ClientInputHandler handler, Connection ccxn) {
         SPIfromSerializedContainer task = new SPIfromSerializedContainer();
         try {
-            task.initFromContainer(container);
+            task.initFromContainer(container, "ClientInterface");
         } catch (Exception ex) {
             return new ClientResponseImpl(
                     ClientResponseImpl.UNEXPECTED_FAILURE,
@@ -1355,11 +1357,13 @@ public class ClientInterface implements SnapshotDaemon.DaemonInitiator {
         if (user == null) {
             String errorMessage = "User " + handler.getUserName() + " has been removed from the system via a catalog update";
             authLog.info(errorMessage);
-            return errorResponse(ccxn, task.clientHandle, ClientResponse.UNEXPECTED_FAILURE, errorMessage, null, false);
+            ClientResponseImpl err = errorResponse(ccxn, task.clientHandle, ClientResponse.UNEXPECTED_FAILURE, errorMessage, null, false);
+            task.discard("ClientInterface");
+            return err;
         }
 
         ClientResponseImpl response = m_dispatcher.dispatch(task, handler, ccxn, user);
-        task.discard();
+        task.discard("ClientInterface");
         return response;
     }
 
@@ -1621,7 +1625,6 @@ public class ClientInterface implements SnapshotDaemon.DaemonInitiator {
                     catProc.getSinglepartition(), catProc.getEverysite(),
                     0,
                     0, System.nanoTime());
-            serializedSPI.discard();
         } catch (Exception e) {
             hostLog.fatal(e);
             VoltDB.crashLocalVoltDB(e.getMessage(), true, e);
@@ -1888,7 +1891,6 @@ public class ClientInterface implements SnapshotDaemon.DaemonInitiator {
                 proc.getReadonly(), proc.getSinglepartition(), proc.getEverysite(),
                 0 /* Can provide anything for multi-part */,
                 spi.getSerializedSize(), System.nanoTime());
-        serializedSPI.discard();
         return syncCb.getResponse(timeoutMS);
     }
 
@@ -1914,7 +1916,6 @@ public class ClientInterface implements SnapshotDaemon.DaemonInitiator {
                 proc.getReadonly(), proc.getSinglepartition(), proc.getEverysite(),
                 0 /* Can provide anything for multi-part */,
                 spi.getSerializedSize(), System.nanoTime());
-        serializedSPI.discard();
     }
 
     /**

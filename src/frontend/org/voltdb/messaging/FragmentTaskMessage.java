@@ -140,7 +140,7 @@ public class FragmentTaskMessage extends TransactionInfoBaseMessage
 
     int m_inputDepCount = 0;
     private Iv2InitiateTaskMessage m_initiateTask;
-    SharedBBContainer m_initiateTaskContainer;
+    public SharedBBContainer m_initiateTaskContainer;
     // Partitions involved in this multipart, set in the first fragment
     Set<Integer> m_involvedPartitions = ImmutableSet.of();
 
@@ -213,7 +213,7 @@ public class FragmentTaskMessage extends TransactionInfoBaseMessage
         m_procNameToLoad = ftask.m_procNameToLoad;
         m_batchTimeout = ftask.m_batchTimeout;
         if (ftask.m_initiateTaskContainer != null) {
-            m_initiateTaskContainer = ftask.m_initiateTaskContainer.duplicate();
+            m_initiateTaskContainer = ftask.m_initiateTaskContainer;
         }
         assert(selfCheck());
     }
@@ -457,13 +457,15 @@ public class FragmentTaskMessage extends TransactionInfoBaseMessage
                                       Collection<Integer> involvedPartitions) {
         m_initiateTask = initiateTask;
         m_involvedPartitions = ImmutableSet.copyOf(involvedPartitions);
-        m_initiateTaskContainer = HBBPool.allocateHeapAndPool(initiateTask.getSerializedSize());
-        try {
-            initiateTask.flattenToBuffer(m_initiateTaskContainer.b());
-            m_initiateTaskContainer.b().flip();
-        } catch (IOException e) {
-            //Executive decision, don't throw a checked exception. Let it burn.
-            throw new RuntimeException(e);
+        if (m_initiateTaskContainer == null) {
+            m_initiateTaskContainer = HBBPool.allocateHeapAndPool(initiateTask.getSerializedSize(), "Params_Raw");
+            try {
+                initiateTask.flattenToBuffer(m_initiateTaskContainer.b());
+                m_initiateTaskContainer.b().flip();
+            } catch (IOException e) {
+                //Executive decision, don't throw a checked exception. Let it burn.
+                throw new RuntimeException(e);
+            }
         }
     }
 
@@ -471,9 +473,12 @@ public class FragmentTaskMessage extends TransactionInfoBaseMessage
         return m_initiateTask;
     }
 
-    public void implicitReference() {
+    public void implicitReference(String tag) {
         if (m_initiateTask != null) {
-            m_initiateTask.implicitReference();
+            m_initiateTask.implicitReference(tag);
+        }
+        if (m_initiateTaskContainer != null) {
+            m_initiateTaskContainer.implicitReference(tag + "_Raw");
         }
     }
 
@@ -808,12 +813,12 @@ public class FragmentTaskMessage extends TransactionInfoBaseMessage
     {
         initFromSubMessageBuffer(container);
         assert(container.b().limit() == container.b().position());
-        container.discard();
+        container.discard(getClass().getSimpleName());
     }
 
     @Override
     public void initFromInputHandler(VoltProtocolHandler handler, NIOReadStream inputStream) throws IOException {
-        initFromContainer(handler.getNextHBBMessage(inputStream));
+        initFromContainer(handler.getNextHBBMessage(inputStream, getClass().getSimpleName()));
     }
 
     /**
@@ -919,12 +924,12 @@ public class FragmentTaskMessage extends TransactionInfoBaseMessage
             if (m_initiateTaskContainer == null) {
                 int realLimit = buf.limit();
                 buf.limit(startPosition + initiateTaskMessageLength);
-                m_initiateTaskContainer = container.slice();
+                m_initiateTaskContainer = container.slice("Params_Raw");
                 buf.limit(realLimit);
             }
             byte messageType = buf.get();
             assert(messageType == VoltDbMessageFactory.IV2_INITIATE_TASK_ID);
-            container.implicitReference();
+            container.implicitReference(message.getClass().getSimpleName());
             message.initFromContainer(container);
             m_initiateTask = message;
 
@@ -954,12 +959,12 @@ public class FragmentTaskMessage extends TransactionInfoBaseMessage
     }
 
     @Override
-    public void discard() {
+    public void discard(String tag) {
         if (m_initiateTask != null) {
-            m_initiateTask.discard();
+            m_initiateTask.discard(tag);
         }
         if (m_initiateTaskContainer != null) {
-            m_initiateTaskContainer.discard();
+            m_initiateTaskContainer.discard(tag + "_Raw");
         }
     }
 

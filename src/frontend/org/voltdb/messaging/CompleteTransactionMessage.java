@@ -134,19 +134,19 @@ public class CompleteTransactionMessage extends TransactionInfoBaseMessage
         m_hash = buf.getInt();
         m_flags = buf.getInt();
         assert(buf.limit() == buf.position());
-        container.discard();
+        container.discard(getClass().getSimpleName());
     }
 
     @Override
     public void initFromInputHandler(VoltProtocolHandler handler, NIOReadStream inputStream) throws IOException {
-        initFromContainer(handler.getNextHBBMessage(inputStream));
+        initFromContainer(handler.getNextHBBMessage(inputStream, getClass().getSimpleName()));
     }
 
     @Override
-    public void implicitReference() {}
+    public void implicitReference(String tag) {}
 
     @Override
-    public void discard() {}
+    public void discard(String tag) {}
 
     @Override
     public String toString() {

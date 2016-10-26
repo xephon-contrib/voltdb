@@ -18,9 +18,12 @@
 package org.voltcore.utils;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.cliffc_voltpatches.high_scale_lib.NonBlockingHashMap;
@@ -75,7 +78,7 @@ public final class HBBPool {
      * have a capacity larger than the requested size. The limit will be set to the requested
      * size.
      */
-    private static SharedBBContainer internalAllocateHeapAndPool(final Integer capacity, boolean logging) {
+    private static SharedBBContainer internalAllocateHeapAndPool(final Integer capacity, final boolean logging, final String tag) {
         final int bucket = roundToClosestPowerOf2(capacity);
         ConcurrentLinkedQueue<BufferWrapper> pooledBuffers = m_pooledBuffers.get(bucket);
         if (pooledBuffers == null) {
@@ -84,23 +87,23 @@ public final class HBBPool {
                 pooledBuffers = m_pooledBuffers.get(bucket);
             }
         }
-        BufferWrapper container = pooledBuffers.poll();
+        BufferWrapper wrapper = pooledBuffers.poll();
         SharedBBContainer result;
-        if (container == null) {
-            result = allocateHeap(bucket, logging);
+        if (wrapper == null) {
+            result = allocateHeap(bucket, logging, tag);
         }
         else {
-            container.m_wrapperRefCount.set(1);
-            result = new SharedBBContainer(container, false, logging);
+            wrapper.m_wrapperRefCount = 1;
+            result = new SharedBBContainer(wrapper, false, logging, tag);
         }
         result.b().limit(capacity);
         return result;
     }
-    public static SharedBBContainer allocateHeapAndPool(final Integer capacity) {
-        return internalAllocateHeapAndPool(capacity, true);
+    public static SharedBBContainer allocateHeapAndPool(final Integer capacity, final String tag) {
+        return internalAllocateHeapAndPool(capacity, true, tag);
     }
-    public static SharedBBContainer allocateHeapAndPoolNoLogging(final Integer capacity) {
-        return internalAllocateHeapAndPool(capacity, false);
+    public static SharedBBContainer allocateHeapAndPoolNoLogging(final Integer capacity, final String tag) {
+        return internalAllocateHeapAndPool(capacity, false, tag);
     }
     //In OOM conditions try clearing the pool
     private static void clear() {
@@ -117,42 +120,48 @@ public final class HBBPool {
                 "Starting bytes was " + startingBytes + " after clearing " +
                  bytesAllocatedGlobally.get() + " change " + (startingBytes - bytesAllocatedGlobally.get()));
     }
-    private static void logAllocation(SharedBBContainer container, int count) {
+    private static void logAllocation(SharedBBContainer container, final int wrapperRefCount, final int containerRefCount, final String tag) {
         if (TRACE.isTraceEnabled()) {
             BufferWrapper bufWrapper = container.m_bufWrapper;
-            int wrapperCount = bufWrapper.m_wrapperRefCount.get();
-            String message = (count==1 && wrapperCount == 1?"Allocated":("Duplicated (" +
-                    wrapperCount + "/" + count + ")")) +
-                    " BufferWrapper " + Integer.toHexString(bufWrapper.hashCode()) +
-                    " Container " + Integer.toHexString(container.hashCode()) +
-                    " with HBB capacity " + bufWrapper.m_buffer.length +
-                    " total allocated " + bytesAllocatedGlobally.get() +
-                    " from " + CoreUtils.throwableToString(new Throwable());
+            StringBuilder message = new StringBuilder();
+            if (containerRefCount==1 && wrapperRefCount == 1) {
+                message.append("Allocated ").append(tag).append(" (1/1[]) ");
+            }
+            else {
+                message.append("Duplicated ").append(tag).append(" (").append(wrapperRefCount).append("/").append(containerRefCount).append(Arrays.toString(container.m_tags.toArray())).append(")");
+            }
+            message.append(" BufferWrapper ").append(Integer.toHexString(System.identityHashCode(bufWrapper)));
+            message.append(" Container ").append(Integer.toHexString(System.identityHashCode(container)));
+            message.append(" with HBB capacity ").append(bufWrapper.m_buffer.length).append(" total allocated ").append(bytesAllocatedGlobally.get());
+//            message.append(" from ").append(CoreUtils.throwableToString(new Throwable()));
             TRACE.trace(message);
         }
     }
-    private static void logDeallocation(SharedBBContainer container, int count) {
+    private static void logDeallocation(SharedBBContainer container, final int wrapperRefCount, final int containerRefCount, String tag) {
         if (TRACE.isTraceEnabled()) {
             BufferWrapper bufWrapper = container.m_bufWrapper;
-            int wrapperCount = bufWrapper.m_wrapperRefCount.get();
-            String message = (wrapperCount==0?"Deallocated":("Dereferenced (" +
-                    wrapperCount + "/" + count + ")")) +
-                    " BufferWrapper " + Integer.toHexString(bufWrapper.hashCode()) +
-                    " Container " + Integer.toHexString(container.hashCode()) +
-                    " with HBB capacity " + bufWrapper.m_buffer.length +
-                    " total allocated " + bytesAllocatedGlobally.get() +
-                    " from " + CoreUtils.throwableToString(new Throwable());
+            StringBuilder message = new StringBuilder();
+            if (wrapperRefCount==0) {
+                message.append("Deallocated ").append(tag);
+            }
+            else {
+                message.append("Dereferenced ").append(tag).append(" (").append(wrapperRefCount).append("/").append(containerRefCount).append(Arrays.toString(container.m_tags.toArray())).append(")");
+            }
+            message.append(" BufferWrapper ").append(Integer.toHexString(System.identityHashCode(bufWrapper)));
+            message.append(" Container ").append(Integer.toHexString(System.identityHashCode(container)));
+            message.append(" with HBB capacity ").append(bufWrapper.m_buffer.length).append(" total allocated ").append(bytesAllocatedGlobally.get());
+//            message.append(" from ").append(CoreUtils.throwableToString(new Throwable()));
             TRACE.trace(message);
         }
     }
-    private static SharedBBContainer allocateHeap(final int capacity, final boolean logging) {
+    private static SharedBBContainer allocateHeap(final int capacity, final boolean logging, final String tag) {
         SharedBBContainer retval = null;
         try {
-            retval = new SharedBBContainer(capacity, false, logging);
+            retval = new SharedBBContainer(capacity, false, logging, tag);
         } catch (OutOfMemoryError e) {
             if (e.getMessage().contains("Direct buffer memory")) {
                 clear();
-                retval = new SharedBBContainer(capacity, false, logging);
+                retval = new SharedBBContainer(capacity, false, logging, tag);
             } else {
                 throw new Error(e);
             }
@@ -162,7 +171,7 @@ public final class HBBPool {
     }
 
     private static class BufferWrapper {
-        final private AtomicInteger m_wrapperRefCount = new AtomicInteger(1);
+        private volatile int m_wrapperRefCount = 1;
         final private byte[] m_buffer;
 
         private BufferWrapper(final byte[] buff) {
@@ -171,13 +180,14 @@ public final class HBBPool {
     }
 
     public static class SharedBBContainer {
-        final private AtomicInteger m_containerRefCount = new AtomicInteger(1);
+        private volatile int m_containerRefCount = 1;
         private final BufferWrapper m_bufWrapper;
         private final ByteBuffer b;
-        private volatile Throwable m_freeThrowable;
-        private Throwable m_allocationThrowable;
+        private volatile Boolean m_freeThrowable;
+//        private Throwable m_allocationThrowable;
+        public Set<String> m_tags = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
 
-        private SharedBBContainer(final int capacity, final boolean readOnly, final boolean logging) {
+        private SharedBBContainer(final int capacity, final boolean readOnly, final boolean logging, final String tag) {
             final byte[] buffer = new byte[capacity];
             m_bufWrapper = new BufferWrapper(buffer);
             if (readOnly) {
@@ -186,28 +196,32 @@ public final class HBBPool {
             else {
                 b = ByteBuffer.wrap(buffer);
             }
-            if (logging)
-                logAllocation(this, 1);
+            if (logging) {
+                logAllocation(this, 1, 1, tag);
+            }
+            m_tags.add(tag);
             trackAllocation();
         }
 
-        private SharedBBContainer(BufferWrapper singleContainer, final boolean readOnly, final boolean logging) {
-            m_bufWrapper = singleContainer;
+        private SharedBBContainer(BufferWrapper wrapper, final boolean readOnly, final boolean logging, final String tag) {
+            m_bufWrapper = wrapper;
             if (readOnly) {
                 b = ByteBuffer.wrap(m_bufWrapper.m_buffer).asReadOnlyBuffer();
             }
             else {
                 b = ByteBuffer.wrap(m_bufWrapper.m_buffer);
             }
-            if (logging)
-                logAllocation(this, 1);
+            if (logging) {
+                logAllocation(this, 1, 1, tag);
+            }
+            m_tags.add(tag);
             trackAllocation();
         }
 
-        private SharedBBContainer(final SharedBBContainer container, final boolean slice, final boolean readOnly) {
+        private SharedBBContainer(final SharedBBContainer container, final boolean slice, final boolean readOnly, final String tag) {
             container.checkUseAfterFree();
             m_bufWrapper = container.m_bufWrapper;
-            m_bufWrapper.m_wrapperRefCount.incrementAndGet();
+            int wrapperRefCount = ++m_bufWrapper.m_wrapperRefCount;
             if (slice) {
                 if (readOnly) {
                     b = container.b.slice().asReadOnlyBuffer();
@@ -224,25 +238,31 @@ public final class HBBPool {
                     b = container.b.duplicate();
                 }
             }
-            logAllocation(this, 1);
+            logAllocation(this, wrapperRefCount, 1, tag);
+            assert(m_tags.add(tag));
         }
 
         // Use when the same object has multiple references
-        public void implicitReference() {
+        public synchronized void implicitReference(final String tag) {
+            assert(tag != null);
             checkUseAfterFree();
-            int count = m_containerRefCount.incrementAndGet();
-            logAllocation(this, count);
+            final int count = ++m_containerRefCount;
+            logAllocation(this, m_bufWrapper.m_wrapperRefCount, count, tag);
+            assert(m_tags.add(tag));
             trackAllocation();
         }
 
-        private void internalDiscard(final boolean logging) {
-            int count = m_containerRefCount.decrementAndGet();
-            if (count == 0) {
+        private synchronized void internalDiscard(final boolean logging, final String tag) {
+            assert(tag != null);
+            final int containerRefCount = --m_containerRefCount;
+            if (containerRefCount == 0) {
                 checkDoubleFree();
-                if (m_bufWrapper.m_wrapperRefCount.decrementAndGet() == 0) {
+                final int wrapperRefCount = --m_bufWrapper.m_wrapperRefCount;
+                if (wrapperRefCount == 0) {
                     if (logging) {
-                        logDeallocation(this, count);
+                        logDeallocation(this, wrapperRefCount, containerRefCount, tag);
                     }
+                    assert(m_tags.remove(tag));
                     try {
                         int capacity = m_bufWrapper.m_buffer.length;
                         m_pooledBuffers.get(capacity).offer(m_bufWrapper);
@@ -251,23 +271,28 @@ public final class HBBPool {
                     }
                 }
                 else {
-                    if (logging)
-                        logDeallocation(this, count);
+                    if (logging) {
+                        logDeallocation(this, wrapperRefCount, containerRefCount, tag);
+                    }
+                    assert(m_tags.remove(tag));
                 }
+                assert(m_tags.isEmpty());
             }
             else {
                 checkUseAfterFree();
-                if (logging)
-                    logDeallocation(this, count);
+                if (logging) {
+                    logDeallocation(this, m_bufWrapper.m_wrapperRefCount, containerRefCount, tag);
+                }
+                assert(m_tags.remove(tag));
             }
         }
 
-        public void discard() {
-            internalDiscard(true);
+        public void discard(String tag) {
+            internalDiscard(true, tag);
         }
 
-        public void discardNoLogging() {
-            internalDiscard(false);
+        public void discardNoLogging(String tag) {
+            internalDiscard(false, tag);
         }
 
         public ByteBuffer b() {
@@ -275,40 +300,52 @@ public final class HBBPool {
             return b;
         }
 
-        public SharedBBContainer slice() {
-            return new SharedBBContainer(this, true, false);
+        public SharedBBContainer slice(String tag) {
+            if (m_tags.isEmpty()) {
+                tag = null;
+            }
+            return new SharedBBContainer(this, true, false, tag);
         }
 
-        public SharedBBContainer sliceReadOnly() {
-            return new SharedBBContainer(this, true, true);
+        public SharedBBContainer sliceReadOnly(String tag) {
+            if (m_tags.isEmpty()) {
+                tag = null;
+            }
+            return new SharedBBContainer(this, true, true, tag);
         }
 
-        public SharedBBContainer duplicate() {
-            return new SharedBBContainer(this, false, false);
+        public SharedBBContainer duplicate(String tag) {
+            if (m_tags.isEmpty()) {
+                tag = null;
+            }
+            return new SharedBBContainer(this, false, false, tag);
         }
 
-        public SharedBBContainer duplicateReadOnly() {
-            return new SharedBBContainer(this, false, true);
+        public SharedBBContainer duplicateReadOnly(String tag) {
+            if (m_tags.isEmpty()) {
+                tag = null;
+            }
+            return new SharedBBContainer(this, false, true, tag);
         }
 
         private void trackAllocation() {
-            m_allocationThrowable = new Throwable("\"" + Thread.currentThread().getName() + "\" at " + System.currentTimeMillis());
+//          m_allocationThrowable = new Throwable("\"" + Thread.currentThread().getName() + "\" at " + System.currentTimeMillis());
         }
 
         final protected void checkUseAfterFree() {
             if (m_freeThrowable != null) {
-                String errMsg = "Use of BufferWrapper " + Integer.toHexString(m_bufWrapper.hashCode()) +
-                        " Container " + Integer.toHexString(hashCode()) +
+                String errMsg = "Use of BufferWrapper " + Integer.toHexString(System.identityHashCode(m_bufWrapper)) +
+                        " Container " + Integer.toHexString(System.identityHashCode(this)) +
                         " with HBB capacity " + m_bufWrapper.m_buffer.length + " after free in HBBPool";
                 System.err.println(errMsg);
-                System.err.println("Free was by:");
-                m_freeThrowable.printStackTrace();
-                System.err.println("Use was by:");
-                Throwable t = new Throwable("\"" + Thread.currentThread().getName() + "\" at " + System.currentTimeMillis());
-                t.printStackTrace();
-                HOST.fatal(errMsg);
-                HOST.fatal("Free was by:", m_freeThrowable);
-                HOST.fatal("Use was by:", t);
+//                System.err.println("Free was by:");
+//                m_freeThrowable.printStackTrace();
+//                System.err.println("Use was by:");
+//                Throwable t = new Throwable("\"" + Thread.currentThread().getName() + "\" at " + System.currentTimeMillis());
+//                t.printStackTrace();
+//                HOST.fatal(errMsg);
+//                HOST.fatal("Free was by:", m_freeThrowable);
+//                HOST.fatal("Use was by:", t);
                 System.exit(-1);
             }
         }
@@ -316,34 +353,35 @@ public final class HBBPool {
         final protected void checkDoubleFree() {
             synchronized (this) {
                 if (m_freeThrowable != null) {
-                    String errMsg = "Double free of BufferWrapper " + Integer.toHexString(m_bufWrapper.hashCode()) +
-                            " Container " + Integer.toHexString(hashCode()) +
+                    String errMsg = "Double free of BufferWrapper " + Integer.toHexString(System.identityHashCode(m_bufWrapper)) +
+                            " Container " + Integer.toHexString(System.identityHashCode(this)) +
                             " with HBB capacity " + m_bufWrapper.m_buffer.length + " in HBBPool";
                     System.err.println(errMsg);
-                    System.err.println("Original free was by:");
-                    m_freeThrowable.printStackTrace();
-                    System.err.println("Current free was by:");
-                    Throwable t = new Throwable("\"" + Thread.currentThread().getName() + "\" at " + System.currentTimeMillis());
-                    t.printStackTrace();
-                    HOST.fatal(errMsg);
-                    System.err.println("Original free was by:");
-                    HOST.fatal("Original free was by:", m_freeThrowable);
-                    HOST.fatal("Current free was by:", t);
+//                    System.err.println("Original free was by:");
+//                    m_freeThrowable.printStackTrace();
+//                    System.err.println("Current free was by:");
+//                    Throwable t = new Throwable("\"" + Thread.currentThread().getName() + "\" at " + System.currentTimeMillis());
+//                    t.printStackTrace();
+//                    HOST.fatal(errMsg);
+//                    System.err.println("Original free was by:");
+//                    HOST.fatal("Original free was by:", m_freeThrowable);
+//                    HOST.fatal("Current free was by:", t);
                     System.exit(-1);
                 }
-                m_freeThrowable = new Throwable("\"" + Thread.currentThread().getName() + "\" at " + System.currentTimeMillis());
+//                m_freeThrowable = new Throwable("\"" + Thread.currentThread().getName() + "\" at " + System.currentTimeMillis());
+                m_freeThrowable = new Boolean(true);
             }
         }
 
         @Override
         public void finalize() {
             if (m_freeThrowable == null) {
-                String errMsg = "BufferWrapper " + Integer.toHexString(m_bufWrapper.hashCode()) +
-                        " Container " + Integer.toHexString(hashCode()) + " was never discarded (" +
-                        m_bufWrapper.m_wrapperRefCount.get() + ") allocated by:";
+                String errMsg = "BufferWrapper " + Integer.toHexString(System.identityHashCode(m_bufWrapper)) +
+                        " Container " + Integer.toHexString(System.identityHashCode(this)) + " was never discarded (" +
+                        m_bufWrapper.m_wrapperRefCount + ") allocated by:";
                 System.err.println(errMsg);
-                m_allocationThrowable.printStackTrace();
-                HOST.fatal(errMsg, m_allocationThrowable);
+//                m_allocationThrowable.printStackTrace();
+//                HOST.fatal(errMsg, m_allocationThrowable);
                 System.exit(-1);
             }
         }

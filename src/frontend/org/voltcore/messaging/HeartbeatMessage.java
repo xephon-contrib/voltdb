@@ -71,19 +71,19 @@ public class HeartbeatMessage extends TransactionInfoBaseMessage {
         m_lastSafeTxnId = buf.getLong();
 
         assert(buf.limit() == buf.position());
-        container.discardNoLogging();
+        container.discardNoLogging(getClass().getSimpleName());
     }
 
     @Override
     public void initFromInputHandler(VoltProtocolHandler handler, NIOReadStream inputStream) throws IOException {
-        initFromContainer(handler.getNextHBBMessageNoLogging(inputStream));
+        initFromContainer(handler.getNextHBBMessageNoLogging(inputStream, getClass().getSimpleName()));
     }
 
     @Override
-    public void implicitReference() {}
-    @Override
-    public void discard() {}
+    public void implicitReference(String tag) {}
 
+    @Override
+    public void discard(String tag) {}
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();

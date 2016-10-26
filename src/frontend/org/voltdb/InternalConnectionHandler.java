@@ -133,9 +133,11 @@ public class InternalConnectionHandler {
                 DEFAULT_INTERNAL_ADAPTER_NAME, isAdmin, m_adapter.connectionId());
 
         if (!m_adapter.createTransaction(kattrs, procName, catProc, cb, null, serializedSPI, user, partition, System.nanoTime())) {
+            serializedSPI.discard("Params");
             m_failedCount.incrementAndGet();
             return false;
         }
+        serializedSPI.discard("Params");
         m_submitSuccessCount.incrementAndGet();
         return true;
     }
@@ -189,9 +191,11 @@ public class InternalConnectionHandler {
         final AuthUser user = getCatalogContext().authSystem.getImporterUser();
 
         if (!m_adapter.createTransaction(kattrs, proc, catProc, procCallback, statsCollector, serializedSPI, user, partition, System.nanoTime())) {
+            serializedSPI.discard("Params");
             m_failedCount.incrementAndGet();
             return false;
         }
+        serializedSPI.discard("Params");
         m_submitSuccessCount.incrementAndGet();
         return true;
     }

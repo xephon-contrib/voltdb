@@ -203,9 +203,9 @@ public abstract class StoredProcedureInvocation {
 
     public abstract void flattenToBuffer(ByteBuffer buf) throws IOException;
 
-    public abstract void implicitReference();
+    public abstract void implicitReference(String tag);
 
-    public abstract void discard();
+    public abstract void discard(String tag);
 
     @Override
     public String toString() {

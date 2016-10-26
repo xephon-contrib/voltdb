@@ -42,11 +42,11 @@ public abstract class VoltMessage
     protected abstract void initFromContainer(SharedBBContainer container) throws IOException;
     protected abstract void initFromInputHandler(VoltProtocolHandler handler, NIOReadStream inputStream) throws IOException;
     public abstract void flattenToBuffer(ByteBuffer buf) throws IOException;
-    public abstract void implicitReference();
-    public abstract void discard();
+    public abstract void implicitReference(String tag);
+    public abstract void discard(String tag);
 
     public static SharedBBContainer toContainer(VoltMessage message) throws IOException {
-        SharedBBContainer container = HBBPool.allocateHeapAndPool(message.getSerializedSize());
+        SharedBBContainer container = HBBPool.allocateHeapAndPool(message.getSerializedSize(), message.getClass().getSimpleName());
         ByteBuffer buf = container.b();
         message.flattenToBuffer(buf);
         assert(buf.limit() == buf.position());

@@ -142,12 +142,12 @@ public class MpReplayMessage extends VoltMessage {
     }
 
     @Override
-    public void implicitReference() {
-        m_invocation.discard();
+    public void implicitReference(String tag) {
+        m_invocation.discard(tag);
     }
 
     @Override
-    public void discard() {
-        m_invocation.discard();
+    public void discard(String tag) {
+        m_invocation.discard(tag);
     }
 }

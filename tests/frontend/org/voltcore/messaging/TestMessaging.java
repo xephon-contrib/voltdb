@@ -71,12 +71,12 @@ public class TestMessaging extends TestCase {
             m_length = buf.limit() - buf.position();
             m_localValue = new byte[m_length];
             buf.get(m_localValue);
-            container.discard();
+            container.discard(getClass().getSimpleName());
         }
 
         @Override
         public void initFromInputHandler(VoltProtocolHandler handler, NIOReadStream inputStream) throws IOException {
-            initFromContainer(handler.getNextHBBMessage(inputStream));
+            initFromContainer(handler.getNextHBBMessage(inputStream, getClass().getSimpleName()));
         }
 
         @Override
@@ -105,10 +105,10 @@ public class TestMessaging extends TestCase {
         }
 
         @Override
-        public void implicitReference() {}
+        public void implicitReference(String tag) {}
 
         @Override
-        public void discard() {}
+        public void discard(String tag) {}
     }
 
     public static class MessageFactory extends org.voltcore.messaging.VoltMessageFactory {

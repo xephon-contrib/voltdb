@@ -521,7 +521,7 @@ public class SpScheduler extends Scheduler implements SnapshotCompletionInterest
                 // Update the handle in the copy since the constructor doesn't set it
                 replmsg.setSpHandle(newSpHandle);
                 for (long ii : m_sendToHSIds) {
-                    message.implicitReference();
+                    replmsg.implicitReference("SendOrDone"+CoreUtils.hsIdToString(ii));
                 }
                 m_mailbox.send(m_sendToHSIds, replmsg);
 
@@ -748,7 +748,7 @@ public class SpScheduler extends Scheduler implements SnapshotCompletionInterest
             // Do not track the borrow task as outstanding - it completes
             // immediately and is not a valid transaction state for
             // full MP participation (it claims everything can run as SP).
-            txn = new BorrowTransactionState(newSpHandle, message);
+            txn = new BorrowTransactionState(m_mailbox, newSpHandle, message);
         }
 
 
@@ -813,6 +813,9 @@ public class SpScheduler extends Scheduler implements SnapshotCompletionInterest
                 FragmentTaskMessage replmsg =
                     new FragmentTaskMessage(m_mailbox.getHSId(),
                             m_mailbox.getHSId(), msg);
+                for (long hsid : m_sendToHSIds) {
+                    msg.implicitReference("SendOrDone"+CoreUtils.hsIdToString(hsid));
+                }
                 m_mailbox.send(m_sendToHSIds,
                         replmsg);
                 DuplicateCounter counter;
@@ -861,7 +864,7 @@ public class SpScheduler extends Scheduler implements SnapshotCompletionInterest
         // offer FragmentTasks for txn ids that don't match if we have
         // something in progress already
         if (txn == null) {
-            txn = new ParticipantTransactionState(msg.getSpHandle(), msg, msg.isReadOnly());
+            txn = new ParticipantTransactionState(m_mailbox, msg.getSpHandle(), msg, msg.isReadOnly());
             m_outstandingTxns.put(msg.getTxnId(), txn);
             // Only want to send things to the command log if it satisfies this predicate
             // AND we've never seen anything for this transaction before.  We can't
@@ -969,7 +972,6 @@ public class SpScheduler extends Scheduler implements SnapshotCompletionInterest
                 }
 
                 m_duplicateCounters.remove(new DuplicateCounterKey(message.getTxnId(), message.getSpHandle()));
-                counter.m_openMessage.discard();
                 FragmentResponseMessage resp = (FragmentResponseMessage)counter.getLastResponse();
                 // MPI is tracking deps per partition HSID.  We need to make
                 // sure we write ours into the message getting sent to the MPI

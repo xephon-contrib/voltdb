@@ -63,7 +63,7 @@ public class SiteFailureForwardMessage extends SiteFailureMessage {
         super.initFromContainer(container);
         m_reportingHSId = container.b().getLong();
         assert(container.b().limit() == container.b().position());
-        container.discard();
+        container.discard(getClass().getSimpleName());
     }
 
     @Override

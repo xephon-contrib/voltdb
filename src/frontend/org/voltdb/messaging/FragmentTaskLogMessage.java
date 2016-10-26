@@ -118,12 +118,12 @@ public class FragmentTaskLogMessage extends TransactionInfoBaseMessage {
 
             m_fragmentTasks.add(ft);
         }
-        container.discard();
+        container.discard(getClass().getSimpleName());
     }
 
     @Override
     public void initFromInputHandler(VoltProtocolHandler handler, NIOReadStream inputStream) throws IOException {
-        initFromContainer(handler.getNextHBBMessage(inputStream));
+        initFromContainer(handler.getNextHBBMessage(inputStream, getClass().getSimpleName()));
     }
 
     public void appendFragmentTask(FragmentTaskMessage ft) {
@@ -136,8 +136,8 @@ public class FragmentTaskLogMessage extends TransactionInfoBaseMessage {
     }
 
     @Override
-    public void implicitReference() {}
+    public void implicitReference(String tag) {}
 
     @Override
-    public void discard() {}
+    public void discard(String tag) {}
 }

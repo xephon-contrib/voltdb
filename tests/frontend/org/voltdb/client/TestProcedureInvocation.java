@@ -192,7 +192,7 @@ public class TestProcedureInvocation extends TestCase{
     /** Mimic the de/ser path from client to client interface */
     public void testRoundTrip() throws Exception {
         assertEquals(10, pi.getHandle());
-        SharedBBContainer sharedContainer = HBBPool.allocateHeapAndPool(pi.getSerializedSize());
+        SharedBBContainer sharedContainer = HBBPool.allocateHeapAndPool(pi.getSerializedSize(), "Params");
         try {
             pi.flattenToBuffer(sharedContainer.b());
         } catch (IOException e) {
@@ -204,33 +204,33 @@ public class TestProcedureInvocation extends TestCase{
 
         SPIfromSerializedContainer spi = new SPIfromSerializedContainer();
         try {
-            spi.initFromContainer(sharedContainer);
+            spi.initFromContainer(sharedContainer, "Params");
         } catch (IOException e) {
             e.printStackTrace();
             fail();
         }
 
         verifySpi(spi);
-        sharedContainer.discard();
-        spi.discard();
+        sharedContainer.discard("Params");
+        spi.discard("Params");
     }
 
     public void testGetAsBytes() throws Exception {
         SharedBBContainer sharedContainer = null;
         SPIfromSerializedContainer spi = null;
         try {
-            sharedContainer = HBBPool.allocateHeapAndPool(pi.getSerializedSize());
+            sharedContainer = HBBPool.allocateHeapAndPool(pi.getSerializedSize(), "Params");
             pi.flattenToBuffer(sharedContainer.b());
             sharedContainer.b().flip();
             spi = new SPIfromSerializedContainer();
-            spi.initFromContainer(sharedContainer);
+            spi.initFromContainer(sharedContainer, "Params");
         } catch (IOException e) {
             e.printStackTrace();
             fail();
         }
 
         verifySpi(spi);
-        sharedContainer.discard();
-        spi.discard();
+        sharedContainer.discard("Params");
+        spi.discard("Params");
     }
 }

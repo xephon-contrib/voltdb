@@ -72,7 +72,7 @@ public class TestSiteFailureMessage {
 
         SiteFailureMessage gsm = (SiteFailureMessage)vmsg;
         assertThat(gsm,siteFailureIs(sfmSafe(4,44,5,55),sfmFailed(4,5,6),sfmSurvived(1,2,3)));
-        container.discard();
+        container.discard(msg.getClass().getSimpleName());
     }
 
     @Test
@@ -90,7 +90,7 @@ public class TestSiteFailureMessage {
 
         SiteFailureMessage gsm = (SiteFailureMessage)vmsg;
         assertThat(gsm,siteFailureIs(sfmSafe(4,44,5,55),decision,1,2,3));
-        container.discard();
+        container.discard(msg.getClass().getSimpleName());
     }
 
    @Test
@@ -108,7 +108,7 @@ public class TestSiteFailureMessage {
 
        SiteFailureForwardMessage fmsg = new SiteFailureForwardMessage(gsm);
        assertThat(fmsg, failureForwardMsgIs(1, sfmSafe(4,44,5,55),sfmFailed(4,5,6),sfmSurvived(1,2,3)));
-       container.discard();
+       container.discard(msg.getClass().getSimpleName());
 
        container = VoltMessage.toContainer(fmsg);
 
@@ -117,7 +117,7 @@ public class TestSiteFailureMessage {
 
        SiteFailureForwardMessage gsmf = (SiteFailureForwardMessage)vmsg;
        assertThat(gsmf, failureForwardMsgIs(1, sfmSafe(4,44,5,55),sfmFailed(4,5,6),sfmSurvived(1,2,3)));
-       container.discard();
+       container.discard(fmsg.getClass().getSimpleName());
    }
 
 }

@@ -67,7 +67,7 @@ public class VoltMessageFactory {
             message = instantiate(type);
         }
         message.m_sourceHSId = sourceHSId;
-        message.initFromContainer(container.duplicate());
+        message.initFromContainer(container.duplicate(message.getClass().getSimpleName()));
         return message;
     }
 

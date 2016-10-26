@@ -53,10 +53,10 @@ public class SPIfromSerializedContainer extends SPIfromSerialization {
     }
 
     protected void initFromParameterSet(ParameterSet params) throws IOException {
-        SharedBBContainer newSerialization = HBBPool.allocateHeapAndPool(serializedParamSize);
+        SharedBBContainer newSerialization = HBBPool.allocateHeapAndPool(serializedParamSize, "Params");
         params.flattenToBuffer(newSerialization.b());
         newSerialization.b().flip();
-        discard();
+        discard("Params");
         setSerializedParams(newSerialization);
     }
 
@@ -65,18 +65,18 @@ public class SPIfromSerializedContainer extends SPIfromSerialization {
     {
         SPIfromSerializedContainer copy = new SPIfromSerializedContainer();
         commonShallowCopy(copy);
-        copy.serializedParams = serializedParams.duplicate();
+        copy.serializedParams = serializedParams.duplicate("Params");
         copy.serializedParamSize = serializedParamSize;
 
         return copy;
     }
 
-    public void initFromContainer(SharedBBContainer container) throws IOException
+    public void initFromContainer(SharedBBContainer container, String tag) throws IOException
     {
         ByteBuffer buf = container.b();
         genericInit(buf);
         // do not deserialize parameters in ClientInterface context
-        setSerializedParams(container.slice());
+        setSerializedParams(container.slice(tag));
     }
 
     /*
@@ -91,17 +91,17 @@ public class SPIfromSerializedContainer extends SPIfromSerialization {
      */
     public SharedBBContainer getSerializedParams() {
         assert(serializedParams != null);
-        return serializedParams.duplicate();
+        return serializedParams.duplicate("Params");
     }
 
     @Override
-    public void implicitReference() {
-        serializedParams.implicitReference();
+    public void implicitReference(String tag) {
+        serializedParams.implicitReference(tag);
     }
 
     @Override
-    public void discard() {
+    public void discard(String tag) {
         assert(serializedParams != null);
-        serializedParams.discard();
+        serializedParams.discard(tag);
     }
 }

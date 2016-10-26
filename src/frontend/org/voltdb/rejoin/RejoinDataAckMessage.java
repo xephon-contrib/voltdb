@@ -78,12 +78,12 @@ public class RejoinDataAckMessage extends VoltMessage {
         m_isEOS = buf.get() == 1;
         m_targetId = buf.getLong();
         m_blockIndex = buf.getInt();
-        container.discard();
+        container.discard(getClass().getSimpleName());
     }
 
     @Override
     public void initFromInputHandler(VoltProtocolHandler handler, NIOReadStream inputStream) throws IOException {
-        initFromContainer(handler.getNextHBBMessage(inputStream));
+        initFromContainer(handler.getNextHBBMessage(inputStream, getClass().getSimpleName()));
     }
 
     @Override
@@ -96,8 +96,8 @@ public class RejoinDataAckMessage extends VoltMessage {
     }
 
     @Override
-    public void implicitReference() {}
+    public void implicitReference(String tag) {}
 
     @Override
-    public void discard() {}
+    public void discard(String tag) {}
 }

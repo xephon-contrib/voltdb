@@ -157,13 +157,13 @@ public class RejoinMessage extends VoltMessage {
 
     @Override
     protected void initFromContainer(SharedBBContainer container) throws IOException {
-        container.discard();
+        container.discard(getClass().getSimpleName());
         throw new RuntimeException("RejoinMessage: Attempted to deserialize a message which should never need it.");
     }
 
     @Override
     public void initFromInputHandler(VoltProtocolHandler handler, NIOReadStream inputStream) throws IOException {
-        initFromContainer(handler.getNextHBBMessage(inputStream));
+        initFromContainer(handler.getNextHBBMessage(inputStream, getClass().getSimpleName()));
     }
 
     @Override
@@ -172,8 +172,8 @@ public class RejoinMessage extends VoltMessage {
     }
 
     @Override
-    public void implicitReference() {}
+    public void implicitReference(String tag) {}
 
     @Override
-    public void discard() {}
+    public void discard(String tag) {}
 }

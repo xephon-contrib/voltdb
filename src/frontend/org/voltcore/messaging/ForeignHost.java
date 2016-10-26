@@ -232,7 +232,9 @@ public class ForeignHost {
                             }
                             message.flattenToBuffer(buf);
                             buf.flip();
-                            message.discard();
+                            for (int ii = 0; ii < destinations.length; ii++) {
+                                message.discard("SendOrDone"+CoreUtils.hsIdToString(destinations[ii]));
+                            }
                         }
 
                         @Override
@@ -384,6 +386,9 @@ public class ForeignHost {
         }
 
         for (int i = 0; i < destCount; i++) {
+            // These should cancel out
+            message.implicitReference("SendOrDone"+CoreUtils.hsIdToString(recvDests[i]));
+            message.discard("Params");
             deliverMessage( recvDests[i], message);
         }
 

@@ -1233,7 +1233,6 @@ SnapshotCompletionInterest, Promotable
                                           0,//Can provide anything for multi-part
                                           0,
                                           System.nanoTime());
-            serializedSPI.discard();
         } catch (Exception e) {
             LOG.fatal(e);
             VoltDB.crashLocalVoltDB(e.getMessage(), true, e);

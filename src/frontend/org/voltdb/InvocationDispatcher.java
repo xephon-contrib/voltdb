@@ -558,11 +558,12 @@ public final class InvocationDispatcher {
                 err = "Parameter \"" + param + "\" is not recognized/supported"; break;
             }
         }
-        return new ClientResponseImpl(
+        ClientResponseImpl rslt = new ClientResponseImpl(
                        err == null ? ClientResponse.SUCCESS : ClientResponse.GRACEFUL_FAILURE,
                        new VoltTable[] { },
                        err,
                        task.clientHandle);
+        return rslt;
     }
 
     final static ClientResponseImpl dispatchStatistics(OpsSelector selector, StoredProcedureInvocation task, Connection ccxn) {
@@ -994,6 +995,7 @@ public final class InvocationDispatcher {
             final ListenableFuture<ClientResponse> onCatalogUpdateComplete =
                     catalogUpdateCallback.getResponseFuture()
                     ;
+            task.implicitReference("CatalogUpdateCompletion");
             onCatalogUpdateComplete.addListener(new Runnable() {
                 @Override
                 public void run() {
@@ -1011,6 +1013,7 @@ public final class InvocationDispatcher {
                     }
                     m_catalogContext.set(VoltDB.instance().getCatalogContext());
                     dispatch(task, alternateHandler, alternateAdapter, user);
+                    task.discard("CatalogUpdateCompletion");
                 }
             },
             CoreUtils.SAMETHREADEXECUTOR);
@@ -1022,7 +1025,6 @@ public final class InvocationDispatcher {
 
         } catch (JSONException e) {
             long clientHandle = task.clientHandle;
-            task.discard();
             return unexpectedFailureResponse("Unable to parse parameters.", clientHandle);
         }
         return null;
@@ -1138,7 +1140,7 @@ public final class InvocationDispatcher {
                                         task, false, false, false, 0, task.getSerializedSize(),
                                         System.nanoTime());
                             }
-                            task.discard();
+                            task.discard("Params");
                         }
                     }
                     else {
@@ -1409,7 +1411,7 @@ public final class InvocationDispatcher {
                     plannedStmtBatch.isReadOnly(), isSinglePartition, false,
                     partition,
                     task.getSerializedSize(), System.nanoTime());
-            serializedSPI.discard();
+            serializedSPI.discard("Params");
         }
     }
 
@@ -1505,7 +1507,7 @@ public final class InvocationDispatcher {
                 messageSize, nowNanos, invocation.getProcName(), initiatorHSId, isReadOnly, isShortCircuitRead);
 
         // Discarded from SetDone() or DeferredSerialization in Send() if routed SP txn
-        invocation.implicitReference();
+        invocation.implicitReference("SendOrDone"+CoreUtils.hsIdToString(initiatorHSId));
         Iv2InitiateTaskMessage workRequest =
             new Iv2InitiateTaskMessage(m_siteId,
                     initiatorHSId,

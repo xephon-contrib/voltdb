@@ -218,14 +218,14 @@ public class InitiateTaskMessage extends TransactionInfoBaseMessage {
         }
 
         SPIfromSerializedContainer serializedSPI = new SPIfromSerializedContainer();
-        serializedSPI.initFromContainer(container);
-        container.discard();
+        serializedSPI.initFromContainer(container, "Params");
+        container.discard(getClass().getSimpleName());
         m_invocation = serializedSPI;
     }
 
     @Override
     public void initFromInputHandler(VoltProtocolHandler handler, NIOReadStream inputStream) throws IOException {
-        initFromContainer(handler.getNextHBBMessage(inputStream));
+        initFromContainer(handler.getNextHBBMessage(inputStream, getClass().getSimpleName()));
     }
 
     public SharedBBContainer getSerializedParams() {
@@ -234,13 +234,13 @@ public class InitiateTaskMessage extends TransactionInfoBaseMessage {
     }
 
     @Override
-    public void implicitReference() {
-        m_invocation.implicitReference();
+    public void implicitReference(String tag) {
+        m_invocation.implicitReference(tag);
     }
 
     @Override
-    public void discard() {
-        m_invocation.discard();
+    public void discard(String tag) {
+        m_invocation.discard(tag);
     }
 
     @Override

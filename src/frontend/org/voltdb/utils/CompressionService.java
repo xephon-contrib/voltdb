@@ -213,7 +213,7 @@ public final class CompressionService {
         final int actualUncompressedLength = Snappy.uncompress(compressed, output.b());
         assert(uncompressedLength == actualUncompressedLength);
 
-        SharedBBContainer result = HBBPool.allocateHeapAndPool(actualUncompressedLength);
+        SharedBBContainer result = HBBPool.allocateHeapAndPool(actualUncompressedLength, "Decompression");
         output.b().get(result.b().array());
         return result;
     }
