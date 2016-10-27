@@ -1053,68 +1053,26 @@ public class SpScheduler extends Scheduler implements SnapshotCompletionInterest
         // now, fix that later.
         if (txn != null)
         {
-            final boolean isSysproc = ((FragmentTaskMessage) txn.getNotice()).isSysProcTask();
-            if (m_sendToHSIds.length > 0 && !msg.isRestart() && (!msg.isReadOnly() || isSysproc)) {
-                DuplicateCounter counter;
-                counter = new DuplicateCounter(msg.getCoordinatorHSId(),
-                                               msg.getTxnId(),
-                                               m_replicaHSIds,
-                                               msg);
-                safeAddToDuplicateCounterMap(new DuplicateCounterKey(msg.getTxnId(), msg.getSpHandle()), counter);
-            }
-
             Iv2Trace.logCompleteTransactionMessage(msg, m_mailbox.getHSId());
             final CompleteTransactionTask task =
                 new CompleteTransactionTask(m_mailbox, txn, m_pendingTasks, msg, m_drGateway);
             queueOrOfferMPTask(task);
-        } else {
-            // Generate a dummy response message when this site has not seen previous FragmentTaskMessage,
-            // the leader may have started to wait for replicas' response messages.
-            // This can happen in the early phase of site rejoin before replica receiving the snapshot initiation,
-            // it also means this CompleteTransactionMessage message will be dropped because it's after snapshot.
-            final CompleteTransactionResponseMessage resp = new CompleteTransactionResponseMessage(msg);
-            resp.m_sourceHSId = m_mailbox.getHSId();
-            deliver(resp);
         }
     }
 
     public void handleCompleteTransactionResponseMessage(CompleteTransactionResponseMessage msg)
     {
-        final DuplicateCounterKey duplicateCounterKey = new DuplicateCounterKey(msg.getTxnId(), msg.getSpHandle());
-        DuplicateCounter counter = m_duplicateCounters.get(duplicateCounterKey);
-        boolean txnDone = true;
-
         if (msg.isRestart()) {
-            // Don't mark txn done for restarts
-            txnDone = false;
+            // Don't advance truncation point for restarts
+            return;
         }
 
-        if (counter != null) {
-            txnDone = counter.offer(msg) == DuplicateCounter.DONE;
+        final TransactionState txn = m_outstandingTxns.remove(msg.getTxnId());
+        if (txn != null) {
+            setRepairLogTruncationHandle(txn.m_spHandle);
         }
-
-        if (txnDone) {
-            assert !msg.isRestart();
-            final TransactionState txn = m_outstandingTxns.remove(msg.getTxnId());
-            m_duplicateCounters.remove(duplicateCounterKey);
-
-            if (txn != null) {
-                // Set the truncation handle here instead of when processing
-                // FragmentResponseMessage to avoid letting replicas think a
-                // fragment is done before the MP txn is fully committed.
-                assert txn.isDone() : "Counter " + counter + ", leader " + m_isLeader + ", " + msg;
-                setRepairLogTruncationHandle(txn.m_spHandle);
-            }
-        }
-
         // The CompleteTransactionResponseMessage ends at the SPI. It is not
         // sent to the MPI because it doesn't care about it.
-        //
-        // The SPI uses this response message to track if all replicas have
-        // committed the transaction.
-        if (!m_isLeader) {
-            m_mailbox.send(msg.getSPIHSId(), msg);
-        }
     }
 
     /**
