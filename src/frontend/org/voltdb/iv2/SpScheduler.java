@@ -64,6 +64,7 @@ import org.voltdb.messaging.Iv2LogFaultMessage;
 import org.voltdb.messaging.MultiPartitionParticipantMessage;
 import org.voltdb.messaging.RepairLogTruncationMessage;
 
+import com.google_voltpatches.common.collect.EvictingQueue;
 import com.google_voltpatches.common.primitives.Ints;
 import com.google_voltpatches.common.primitives.Longs;
 import com.google_voltpatches.common.util.concurrent.ListenableFuture;
@@ -165,6 +166,8 @@ public class SpScheduler extends Scheduler implements SnapshotCompletionInterest
     long m_lastSentTruncationHandle = Long.MIN_VALUE;
     // the max schedule transaction sphandle, multi-fragments mp txn counts one
     long m_maxScheduledTxnSpHandle = Long.MIN_VALUE;
+
+    EvictingQueue <String> m_debugInvocationQueue = EvictingQueue.create(100);
 
     SpScheduler(int partitionId, SiteTaskerQueue taskQueue, SnapshotCompletionMonitor snapMonitor)
     {
@@ -373,12 +376,21 @@ public class SpScheduler extends Scheduler implements SnapshotCompletionInterest
         return canDeliver;
     }
 
+
     // SpInitiators will see every message type.  The Responses currently come
     // from local work, but will come from replicas when replication is
     // implemented
     @Override
     public void deliver(VoltMessage message)
     {
+        if (tmLog.isDebugEnabled()) {
+            String invocationStr = String.format("[SpScheduler:deliver] is leader: %s,"
+                    + "current truncation handle: %s, max SpHandle %s, message %s",
+                    m_isLeader, TxnEgo.txnIdToString(m_repairLogTruncationHandle),
+                    TxnEgo.txnIdToString(m_maxScheduledTxnSpHandle), message.toString());
+            m_debugInvocationQueue.add(invocationStr);
+        }
+
         if (message instanceof Iv2InitiateTaskMessage) {
             handleIv2InitiateTaskMessage((Iv2InitiateTaskMessage)message);
         }
@@ -1062,7 +1074,7 @@ public class SpScheduler extends Scheduler implements SnapshotCompletionInterest
             // it also means this CompleteTransactionMessage message will be dropped because it's after snapshot.
             final CompleteTransactionResponseMessage resp = new CompleteTransactionResponseMessage(msg);
             resp.m_sourceHSId = m_mailbox.getHSId();
-            handleCompleteTransactionResponseMessage(resp);
+            deliver(resp);
         }
     }
 
@@ -1338,6 +1350,12 @@ public class SpScheduler extends Scheduler implements SnapshotCompletionInterest
         if (m_defaultConsistencyReadLevel == ReadLevel.SAFE) {
             tmLog.info("[dump] current truncation handle: " + TxnEgo.txnIdToString(m_repairLogTruncationHandle) + " "
                 + (m_defaultConsistencyReadLevel == Consistency.ReadLevel.SAFE ? m_bufferedReadLog.toString() : ""));
+        }
+
+        if (tmLog.isDebugEnabled()) {
+            for (String msg: m_debugInvocationQueue) {
+                tmLog.debug(msg);
+            }
         }
     }
 
